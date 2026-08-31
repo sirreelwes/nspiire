@@ -1,0 +1,252 @@
+// Nspiire core data model — blueprint §6
+// Every state transition and interaction is logged: that log is the
+// training data for the deal-terms advisor (blueprint P4).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Creator {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  niche         String?
+  // Linked social accounts
+  socials       SocialAccount[]
+  // Negotiation guardrails: floor rates, deliverable limits, usage-rights
+  // limits, exclusivity limits, do-not-work-with list. JSON for MVP.
+  guardrails    Json     @default("{}")
+  // Rate card per deliverable type
+  rateCard      Json     @default("{}")
+  // Voice/style samples for Pitch agent
+  voiceProfile  Json     @default("{}")
+  // Approval policy: which gates require human sign-off (default: all)
+  approvalPolicy Json    @default("{}")
+  deals         Deal[]
+  opportunities Opportunity[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SocialAccount {
+  id            String   @id @default(cuid())
+  creatorId     String
+  creator       Creator  @relation(fields: [creatorId], references: [id])
+  platform      Platform
+  handle        String
+  followerCount Int?
+  metrics       Json     @default("{}") // engagement rate, avg views, demo splits
+  lastSyncedAt  DateTime?
+
+  @@unique([platform, handle])
+}
+
+enum Platform {
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  X
+  FACEBOOK
+  SNAPCHAT
+  TWITCH
+  OTHER
+}
+
+model Brand {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  website       String?
+  category      String?
+  // Evidence of creator-sponsorship activity (which creators, platforms, formats)
+  sponsorSignals Json    @default("{}")
+  contacts      Contact[]
+  opportunities Opportunity[]
+  deals         Deal[]
+  // Per-brand relationship memory: tone, history, preferences
+  relationshipNotes Json @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Contact {
+  id        String  @id @default(cuid())
+  brandId   String
+  brand     Brand   @relation(fields: [brandId], references: [id])
+  name      String?
+  email     String?
+  role      String?
+  source    String? // where Scout found them
+  createdAt DateTime @default(now())
+
+  @@unique([brandId, email])
+}
+
+// A scored lead produced by Scout, before any outreach
+model Opportunity {
+  id          String   @id @default(cuid())
+  creatorId   String
+  creator     Creator  @relation(fields: [creatorId], references: [id])
+  brandId     String
+  brand       Brand    @relation(fields: [brandId], references: [id])
+  fitScore    Float    // 0–1, Scout's fit vs. niche/audience/rates/guardrails
+  rationale   String   // why Scout thinks this is a fit
+  status      OpportunityStatus @default(SOURCED)
+  deal        Deal?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([creatorId, brandId])
+}
+
+enum OpportunityStatus {
+  SOURCED
+  QUALIFIED   // human-approved for outreach
+  REJECTED    // creator said no
+  CONVERTED   // became a Deal
+}
+
+// Deal state machine — blueprint §4. Transitions ONLY via lib/deals/stateMachine.ts
+model Deal {
+  id            String    @id @default(cuid())
+  creatorId     String
+  creator       Creator   @relation(fields: [creatorId], references: [id])
+  brandId       String
+  brand         Brand     @relation(fields: [brandId], references: [id])
+  opportunityId String?   @unique
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  state         DealState @default(PITCHED)
+  // Live negotiated terms: rate, deliverables, usage rights, exclusivity,
+  // payment schedule, kill fee, disclosure requirements
+  terms         Json      @default("{}")
+  transitions   DealTransition[]
+  interactions  Interaction[]
+  contracts     Contract[]
+  deliverables  Deliverable[]
+  invoices      Invoice[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum DealState {
+  PITCHED
+  NEGOTIATING
+  TERMS_AGREED
+  CONTRACT_SENT
+  SIGNED
+  IN_PRODUCTION
+  DELIVERED
+  INVOICED
+  PAID
+  RENEWAL_WATCH
+  LOST
+}
+
+// Append-only log of every state change — the terms-advisor training data
+model DealTransition {
+  id        String    @id @default(cuid())
+  dealId    String
+  deal      Deal      @relation(fields: [dealId], references: [id])
+  fromState DealState
+  toState   DealState
+  actor     String    // agent name or "human:<userId>"
+  // Snapshot of terms at transition time (anonymizable for benchmarks)
+  termsSnapshot Json  @default("{}")
+  note      String?
+  createdAt DateTime  @default(now())
+}
+
+// Every agent/human touch on a deal: emails sent/received, approvals, escalations
+model Interaction {
+  id        String   @id @default(cuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id])
+  channel   String   // email | dashboard | system
+  direction String   // outbound | inbound | internal
+  actor     String   // pitch | negotiator | counsel | books | human:<id> | brand
+  subject   String?
+  body      String?
+  // For outbound agent messages: was this gated, and who approved
+  approval  Json     @default("{}")
+  createdAt DateTime @default(now())
+}
+
+model Contract {
+  id         String   @id @default(cuid())
+  dealId     String
+  deal       Deal     @relation(fields: [dealId], references: [id])
+  version    Int      @default(1)
+  templateId String?
+  // Structured terms the doc was generated from
+  terms      Json     @default("{}")
+  fileUrl    String?
+  status     ContractStatus @default(DRAFT)
+  // Counsel's redline flags on inbound contracts (perpetual usage, broad exclusivity…)
+  riskFlags  Json     @default("[]")
+  sentAt     DateTime?
+  signedAt   DateTime?
+  createdAt  DateTime @default(now())
+}
+
+enum ContractStatus {
+  DRAFT
+  SENT
+  SIGNED
+  VOID
+}
+
+model Deliverable {
+  id          String   @id @default(cuid())
+  dealId      String
+  deal        Deal     @relation(fields: [dealId], references: [id])
+  platform    Platform
+  format      String   // dedicated video, integration, story set, post…
+  dueAt       DateTime?
+  postedUrl   String?
+  // FTC disclosure checklist state
+  disclosure  Json     @default("{}")
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+}
+
+model Invoice {
+  id         String   @id @default(cuid())
+  dealId     String
+  deal       Deal     @relation(fields: [dealId], references: [id])
+  amountCents Int
+  currency   String   @default("USD")
+  status     InvoiceStatus @default(DRAFT)
+  // CardPointe refs (gateway txn ids, ACH refs) — MVP tracks, never holds funds
+  paymentRefs Json    @default("{}")
+  dueAt      DateTime?
+  paidAt     DateTime?
+  createdAt  DateTime @default(now())
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  OVERDUE
+  PAID
+  VOID
+}
+
+// Anonymized closed-deal terms — the P4 moat. Written on PAID transition.
+model TermsBenchmark {
+  id            String   @id @default(cuid())
+  niche         String
+  platform      Platform
+  followerBand  String   // e.g. "500K-1M"
+  format        String
+  usageRights   String?
+  exclusivity   String?
+  amountCents   Int
+  currency      String   @default("USD")
+  source        String   @default("internal") // internal | external
+  closedAt      DateTime
+  createdAt     DateTime @default(now())
+}
