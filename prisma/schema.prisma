@@ -40,10 +40,21 @@ model SocialAccount {
   platform      Platform
   handle        String
   followerCount Int?
-  metrics       Json     @default("{}") // engagement rate, avg views, demo splits
+  // Shape defined by AudienceMetricsSchema in lib/creators/metrics.ts. Carries
+  // its own `source` so a hand-entered figure never looks like a synced one.
+  metrics       Json     @default("{}")
   lastSyncedAt  DateTime?
 
+  // Platform OAuth connection. Null until the creator connects the account.
+  // externalId is TikTok's open_id — stable per app, and how we re-find them.
+  externalId     String?
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  scopes         String[] @default([])
+
   @@unique([platform, handle])
+  @@index([creatorId])
 }
 
 enum Platform {
@@ -95,6 +106,11 @@ model Opportunity {
   brand       Brand    @relation(fields: [brandId], references: [id])
   fitScore    Float    // 0–1, Scout's fit vs. niche/audience/rates/guardrails
   rationale   String   // why Scout thinks this is a fit
+  // The checkable claim behind the fit — a sponsorship they've run, an
+  // ambassador programme. Kept separate from rationale so a human can verify
+  // the fact without re-reading the argument.
+  evidence        String?
+  suggestedFormat String?
   status      OpportunityStatus @default(SOURCED)
   deal        Deal?
   createdAt   DateTime @default(now())

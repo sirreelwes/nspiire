@@ -54,6 +54,12 @@ export default async function DashboardPage() {
         </h1>
         <div className="flex flex-wrap items-baseline gap-4">
           <Link
+            href="/creators"
+            className="text-sm font-medium underline underline-offset-4"
+          >
+            Creators
+          </Link>
+          <Link
             href="/deals"
             className="text-sm font-medium underline underline-offset-4"
           >

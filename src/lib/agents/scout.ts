@@ -1,67 +1,135 @@
-import { ask } from "./claude";
-import type { AgentResult, Guardrails } from "./types";
+import { z } from "zod";
+import { askStructured } from "./claude";
+import type { AgentResult } from "./types";
+import type { Guardrails } from "./types";
+import type { AudienceMetrics } from "@/lib/creators/metrics";
+import { formatCount, formatRate } from "@/lib/creators/metrics";
 
 /**
- * Scout — finds and scores brand opportunities for a creator (blueprint §4).
- * v0: LLM-assisted candidate generation + fit scoring. Later: dedicated
- * ingestion (competitor-creator sponsor lists, ad libraries, sponsor scraping).
+ * Scout — finds and scores brand partners for a creator (blueprint §4).
+ *
+ * Grounded in the creator's real, synced metrics rather than vibes. Scout does
+ * not invent contact details: a name and a category are things a human can
+ * verify in a minute, an email address is something that gets sent to a
+ * stranger. Contacts come from research later, not from a language model.
+ *
+ * The shortlist is ALWAYS human-reviewed before any outreach (blueprint §5),
+ * so this returns needsApproval unconditionally.
  */
+
+export const ScoredOpportunitySchema = z.object({
+  brandName: z.string(),
+  category: z.string(),
+  /** 0-1. How well this brand fits THIS creator, not how big the brand is. */
+  fitScore: z.number().min(0).max(1),
+  /** Why, in one or two sentences a creator would actually find useful. */
+  rationale: z.string(),
+  /** What suggests they sponsor creators at this tier — the checkable part. */
+  evidence: z.string(),
+  /** Deliverable format from the creator's rate card this brand suits best. */
+  suggestedFormat: z.string(),
+});
+export type ScoredOpportunity = z.infer<typeof ScoredOpportunitySchema>;
+
+const ScoutOutputSchema = z.object({
+  opportunities: z.array(ScoredOpportunitySchema),
+});
 
 export interface ScoutInput {
   creator: {
-    id: string;
+    name: string;
     niche: string;
-    platforms: { platform: string; handle: string; followerCount: number }[];
+    platforms: {
+      platform: string;
+      handle: string;
+      followerCount: number | null;
+      metrics: AudienceMetrics;
+    }[];
     guardrails: Guardrails;
   };
-  /** Optional seed list from ingestion pipelines */
-  candidateBrands?: { name: string; category?: string; evidence?: string }[];
-}
-
-export interface ScoredOpportunity {
-  brandName: string;
-  category?: string;
-  fitScore: number; // 0–1
-  rationale: string;
+  /** Brands already in the pipeline, so Scout doesn't re-suggest them. */
+  existingBrands?: string[];
+  count?: number;
 }
 
 const SYSTEM = `You are Scout, the brand-discovery agent for Nspiire, an AI manager for social media creators.
-Given a creator profile, produce brand sponsorship candidates that credibly sponsor creators in this niche and size band.
-Respect the do-not-work-with list absolutely. Score fit 0-1 on niche match, audience match, and evidence the brand sponsors creators.
-Return strict JSON: [{"brandName","category","fitScore","rationale"}]. No prose.`;
+
+Given a creator's real audience numbers and their guardrails, propose brands that plausibly sponsor creators in this niche AND at this size band. Size matters as much as topic: a creator with 40k followers and a brand that only works with 5M-follower accounts is a bad fit however well the topic matches, and vice versa.
+
+Rules:
+- The do-not-work-with list is absolute. Never propose a brand on it, or one whose category is on it.
+- Only suggest formats that appear in the creator's offered formats.
+- Do not invent contact names or email addresses. "evidence" must be something a human could go and check — a named creator-sponsorship the brand has run, an affiliate or ambassador programme, a category norm — not a guess dressed up as a fact.
+- If you are unsure a brand actually sponsors creators, say so in the evidence rather than asserting it.
+- fitScore is about fit for THIS creator. Reserve above 0.8 for brands you would bet on.
+- Prefer brands the creator could realistically reach now over aspirational household names.`;
 
 export async function runScout(
-  input: ScoutInput
+  input: ScoutInput,
 ): Promise<AgentResult<ScoredOpportunity[]>> {
   const user = JSON.stringify({
-    niche: input.creator.niche,
-    platforms: input.creator.platforms,
-    doNotWorkWith: input.creator.guardrails.doNotWorkWith,
-    offeredFormats: input.creator.guardrails.offeredFormats,
-    seedCandidates: input.candidateBrands ?? [],
+    creator: {
+      niche: input.creator.niche,
+      platforms: input.creator.platforms.map((p) => ({
+        platform: p.platform,
+        followers: p.followerCount,
+        // Send the readable forms too — a model reasons better about
+        // "1.2M followers, 4.1% engagement" than about raw floats.
+        readable: `${formatCount(p.followerCount)} followers, ${formatRate(
+          p.metrics.engagementRateByFollowers,
+        )} engagement by followers, ${formatCount(p.metrics.avgViews)} avg views over ${p.metrics.sampleSize} recent posts`,
+        avgViews: p.metrics.avgViews,
+        engagementRateByViews: p.metrics.engagementRateByViews,
+        engagementRateByFollowers: p.metrics.engagementRateByFollowers,
+        metricsSource: p.metrics.source,
+      })),
+    },
+    guardrails: {
+      doNotWorkWith: input.creator.guardrails.doNotWorkWith,
+      offeredFormats: input.creator.guardrails.offeredFormats,
+    },
+    alreadyInPipeline: input.existingBrands ?? [],
+    howMany: input.count ?? 12,
   });
-  const raw = await ask(SYSTEM, user);
-  let parsed: ScoredOpportunity[] = [];
+
+  let parsed;
   try {
-    parsed = JSON.parse(raw.replace(/```json?|```/g, "").trim());
-  } catch {
+    parsed = await askStructured(SYSTEM, user, ScoutOutputSchema);
+  } catch (err) {
     return {
       agent: "scout",
       output: [],
-      escalation: { reason: "Scout returned unparseable output" },
+      escalation: {
+        reason: err instanceof Error ? err.message : "Scout failed",
+      },
     };
   }
-  const blocked = new Set(
-    input.creator.guardrails.doNotWorkWith.map((b) => b.toLowerCase())
+
+  // Enforce the guardrails in code as well as in the prompt. A model that is
+  // told not to suggest a blocked brand mostly won't; "mostly" is not a
+  // guardrail.
+  const blocked = input.creator.guardrails.doNotWorkWith
+    .map((b) => b.trim().toLowerCase())
+    .filter(Boolean);
+  const seen = new Set(
+    (input.existingBrands ?? []).map((b) => b.trim().toLowerCase()),
   );
-  const clean = parsed.filter((o) => !blocked.has(o.brandName.toLowerCase()));
-  // Shortlist is always human-reviewed in MVP (blueprint §5)
+
+  const clean = parsed.opportunities.filter((o) => {
+    const name = o.brandName.trim().toLowerCase();
+    const category = o.category.trim().toLowerCase();
+    if (!name || seen.has(name)) return false;
+    if (blocked.some((b) => name.includes(b) || category.includes(b))) return false;
+    seen.add(name);
+    return true;
+  });
+
   return {
     agent: "scout",
     output: clean.sort((a, b) => b.fitScore - a.fitScore),
     needsApproval: {
       gate: "shortlist-review",
-      reason: "MVP: creator reviews Scout shortlist before any outreach",
+      reason: `${input.creator.name} reviews the shortlist before anything goes out`,
     },
   };
 }
