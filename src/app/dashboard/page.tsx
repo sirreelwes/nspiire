@@ -1,36 +1,10 @@
 import Link from "next/link";
+import { LogoMark } from "@/components/Logo";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { DEAL_FLOW, type DealState } from "@/lib/deals/stateMachine";
+import { ASIDE, PIPELINE, STATE_LABELS } from "@/lib/deals/labels";
 
 export const dynamic = "force-dynamic";
-
-/** The happy path, in order. LOST and RENEWAL_WATCH hang off it. */
-const PIPELINE: DealState[] = [
-  "PITCHED",
-  "NEGOTIATING",
-  "TERMS_AGREED",
-  "CONTRACT_SENT",
-  "SIGNED",
-  "IN_PRODUCTION",
-  "DELIVERED",
-  "INVOICED",
-  "PAID",
-];
-const ASIDE: DealState[] = ["RENEWAL_WATCH", "LOST"];
-
-const STATE_LABELS: Record<DealState, string> = {
-  PITCHED: "Pitched",
-  NEGOTIATING: "Negotiating",
-  TERMS_AGREED: "Terms agreed",
-  CONTRACT_SENT: "Contract sent",
-  SIGNED: "Signed",
-  IN_PRODUCTION: "In production",
-  DELIVERED: "Delivered",
-  INVOICED: "Invoiced",
-  PAID: "Paid",
-  RENEWAL_WATCH: "Renewal watch",
-  LOST: "Lost",
-};
 
 /** The four approval gates from ApprovalPolicySchema. The last two are
  *  hard rules — no creator setting turns them off. */
@@ -70,16 +44,28 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:py-16">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
+      <Link href="/" aria-label="Nspiire home" className="inline-block">
+        <LogoMark size={28} />
+      </Link>
+
+      <div className="mt-6 flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Dashboard
         </h1>
-        <Link
-          href="/onboarding"
-          className="text-sm font-medium underline underline-offset-4"
-        >
-          Onboard a creator
-        </Link>
+        <div className="flex flex-wrap items-baseline gap-4">
+          <Link
+            href="/deals"
+            className="text-sm font-medium underline underline-offset-4"
+          >
+            All deals
+          </Link>
+          <Link
+            href="/onboarding"
+            className="text-sm font-medium underline underline-offset-4"
+          >
+            Onboard a creator
+          </Link>
+        </div>
       </div>
 
       {!data.ready && (
@@ -167,23 +153,32 @@ export default async function DashboardPage() {
             {data.ready && data.recent.length > 0 ? (
               <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
                 {data.recent.map((d) => (
-                  <li
-                    key={d.id}
-                    className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
-                  >
-                    <span className="truncate">
-                      {d.brand.name}
-                      <span className="text-neutral-500"> · {d.creator.name}</span>
-                    </span>
-                    <span className="shrink-0 text-neutral-500">
-                      {STATE_LABELS[d.state as DealState]}
-                    </span>
+                  <li key={d.id}>
+                    <Link
+                      href={`/deals/${d.id}`}
+                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+                    >
+                      <span className="truncate">
+                        {d.brand.name}
+                        <span className="text-neutral-500">
+                          {" · "}
+                          {d.creator.name}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-neutral-500">
+                        {STATE_LABELS[d.state as DealState]}
+                      </span>
+                    </Link>
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="px-4 py-3 text-sm text-neutral-500">
-                No deals yet. Scout is warming up.
+                No deals yet. Scout is warming up —{" "}
+                <Link href="/deals/new" className="underline underline-offset-4">
+                  add one by hand
+                </Link>{" "}
+                in the meantime.
               </p>
             )}
           </div>
@@ -204,20 +199,25 @@ function StageCard({
 }) {
   const next = DEAL_FLOW[state];
   return (
-    <li
-      className={`rounded-xl border px-3 py-3 ${
-        muted
-          ? "border-dashed border-neutral-200 dark:border-neutral-800"
-          : "border-neutral-200 dark:border-neutral-800"
-      }`}
-      title={
-        next.length ? `→ ${next.map((s) => STATE_LABELS[s]).join(", ")}` : "Terminal"
-      }
-    >
-      <div className="text-2xl font-semibold tabular-nums">{count}</div>
-      <div className="mt-0.5 text-xs text-neutral-500">
-        {STATE_LABELS[state]}
-      </div>
+    <li>
+      <Link
+        href={`/deals?state=${state}`}
+        className={`block rounded-xl border px-3 py-3 ${
+          muted
+            ? "border-dashed border-neutral-200 dark:border-neutral-800"
+            : "border-neutral-200 dark:border-neutral-800"
+        }`}
+        title={
+          next.length
+            ? `→ ${next.map((s) => STATE_LABELS[s]).join(", ")}`
+            : "Terminal"
+        }
+      >
+        <div className="text-2xl font-semibold tabular-nums">{count}</div>
+        <div className="mt-0.5 text-xs text-neutral-500">
+          {STATE_LABELS[state]}
+        </div>
+      </Link>
     </li>
   );
 }

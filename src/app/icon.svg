@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-182.5 -384.25 1140 1140" role="img" aria-label="Nspiire">
+  <!--
+    The Nspiire mark — identical geometry to <LogoMark> in src/components/Logo,
+    so the favicon and the in-app mark are the same drawing.
+
+    Every coordinate is scanned from Jost 400's rendered N, scaled by 1000,
+    with the cap line at y=0 and the baseline at y=700. Jost draws a POINTED N:
+    the diagonal's edges (slope 1.0507) run past the stems, cutting the left
+    stem's top and the right stem's bottom and overshooting cap and baseline by
+    ~34. The diagonal's thickness is 85 measured PERPENDICULAR to its run —
+    one stem width.
+
+    Nothing touches the two uprights: the arc stops 55 short of the cap line,
+    and the diagonal is cut vertically at x=220 and x=555 — the same clearance,
+    0.055em at the logotype's scale.
+
+    Framed with only ~22 of padding so the mark renders as large as a square
+    icon allows. It is a tall, narrow mark, so height is the constraint: at a
+    32px retina tab it reads; at a true 16px the clearances close up. That is
+    the cost of keeping it identical to the mark rather than drawing a bolder
+    small-size cut.
+  -->
+  <style>
+    :root { --ink: #141310; --accent: #8a2226; }
+    @media (prefers-color-scheme: dark) {
+      :root { --ink: #ededed; --accent: #b23a44; }
+    }
+  </style>
+  <path fill="var(--accent)" d="M80,-55 A307.5,307.5 0 0 1 695,-55 L610,-55 A222.5,222.5 0 0 0 165,-55 Z" />
+  <polygon fill="var(--ink)" points="80,-34 165,55 165,700 80,700" />
+  <polygon fill="var(--ink)" points="610,0 695,0 695,734 610,645" />
+  <polygon fill="var(--accent)" points="220,112 555,464 555,588 220,236" />
+</svg>

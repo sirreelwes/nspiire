@@ -106,14 +106,26 @@ async function writeBenchmark(tx: any, deal: any) {
       niche: deal.creator.niche ?? "unknown",
       platform: primary.platform,
       followerBand: followerBand(primary.followerCount ?? 0),
-      format: String(terms.format ?? "unknown"),
-      usageRights: terms.usageRights ? String(terms.usageRights) : null,
-      exclusivity: terms.exclusivity ? String(terms.exclusivity) : null,
+      format: String(terms.format || "unknown"),
+      usageRights: benchmarkWindow(terms.usageDays, terms.usageRights),
+      exclusivity: benchmarkWindow(terms.exclusivityDays, terms.exclusivity),
       amountCents: Number(terms.amountCents),
       currency: String(terms.currency ?? "USD"),
       closedAt: new Date(),
     },
   });
+}
+
+/**
+ * TermsBenchmark stores these windows as text, but deal terms carry day counts
+ * (see lib/deals/terms.ts) so guardrails can be checked mechanically. Render
+ * the number; fall back to any free-text value on older rows.
+ */
+function benchmarkWindow(days: unknown, legacy: unknown): string | null {
+  if (typeof days === "number" && Number.isFinite(days)) {
+    return days === 0 ? "none" : `${days} days`;
+  }
+  return legacy ? String(legacy) : null;
 }
 
 export function followerBand(count: number): string {

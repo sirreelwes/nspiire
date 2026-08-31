@@ -1,0 +1,108 @@
+/*
+ * Nspiire logo. All geometry is in em, so the whole lockup scales with
+ * font-size and nothing needs re-measuring per size.
+ *
+ * Measured from Jost 400 (not eyeballed):
+ *   I advance 0.245em · I ink 0.08-0.165em · stem width 0.085em
+ *   with 0.3em tracking the II stems centre on 0.1225em and 0.6675em,
+ *   and the II ink runs 0.08em to 0.71em
+ *   N ink runs 0.08em to 0.695em, so its stems are 0.08-0.165 and 0.61-0.695
+ *   cap height 0.70em · cap line 0.945em above the mark span's bottom
+ *
+ * Two colours: --logo-ink is the letters, --logo-accent is the geometry added
+ * to them (the handle and the N's diagonal). Set them equal for single-colour
+ * use — embossing, etching, one-ink print.
+ */
+
+.word {
+  font-family: var(--font-jost), "Century Gothic", Futura, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  /* The tracking leaves a trailing space after the E; the matching
+     padding-left is what actually optically centres the lockup. */
+  padding-left: 0.3em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--logo-ink, #141310);
+}
+
+.mark {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+}
+
+/* border-box, so the declared width IS the outer width — getting that wrong
+   adds both borders to it and hangs the feet past the stems. The stroke equals
+   the stem width, so the feet read as continuations of the two uprights.
+   A true half circle: height and corner radius are both half the width. */
+.arc {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+  /* Measured: with line-height 1 the text baseline sits 0.1525em above this
+     span's bottom edge and Jost's cap height is 0.70em (I, H, E and P all
+     measure exactly that; N reads 0.735 only because its diagonal's apex
+     overshoots). So the stems stop at 0.8525em — and the feet stop 0.055em
+     ABOVE that, the same clearance the diagonal keeps. Nothing in the mark
+     touches the two uprights; that is what lets them read as two separate
+     strokes. Depends on line-height: 1. */
+  bottom: 0.9075em;
+  border: 0.085em solid var(--logo-accent, #8a2226);
+  border-bottom: none;
+}
+
+.arcWord {
+  left: 0.08em;
+  width: 0.63em;
+  height: 0.315em;
+  border-radius: 0.315em 0.315em 0 0;
+}
+
+/* The N's stems sit 0.015em closer together than the II's. */
+.arcMark {
+  left: 0.08em;
+  width: 0.615em;
+  height: 0.3075em;
+  border-radius: 0.3075em 0.3075em 0 0;
+}
+
+/*
+ * The N is a single glyph, so its diagonal is painted with a hard-stop
+ * gradient clipped to the text: ink outside the stem edges, accent between
+ * them where the diagonal is the only ink. The two TRANSPARENT bands clip the
+ * diagonal off the stems, so the uprights read as two separate strokes and the
+ * diagonal only implies the N. Transparent rather than painted, so the gaps
+ * hold on any ground — inverted, on leather, anywhere.
+ */
+.n {
+  display: inline-block;
+  /* Advance 0.775em PLUS the 0.3em letter-space it stands in for: tracking is
+     not applied after an atomic inline, so the box has to carry it or the N
+     crowds the S. */
+  width: 1.075em;
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    var(--logo-ink, #141310) 0,
+    var(--logo-ink, #141310) 0.165em,
+    transparent 0.165em,
+    transparent 0.22em,
+    var(--logo-accent, #8a2226) 0.22em,
+    var(--logo-accent, #8a2226) 0.555em,
+    transparent 0.555em,
+    transparent 0.61em,
+    var(--logo-ink, #141310) 0.61em
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Standing alone there is no following letter, so the box is just the advance. */
+.markOnly {
+  padding-left: 0;
+}
+
+.markOnly .n {
+  width: 0.775em;
+}

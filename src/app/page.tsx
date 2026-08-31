@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 
 const PIPELINE = [
   "Pitched",
@@ -15,8 +16,10 @@ const PIPELINE = [
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-      <h1 className="text-3xl font-semibold tracking-tight">Nspiire</h1>
-      <p className="mt-2 text-neutral-500">
+      <h1>
+        <Logo size={40} />
+      </h1>
+      <p className="mt-4 text-neutral-500">
         Your AI agent. Fire your manager, keep the 20%.
       </p>
 

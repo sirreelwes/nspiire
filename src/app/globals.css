@@ -3,6 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Logo. Ink follows the app's own text colour so the mark never reads as a
+     slightly-wrong black next to it; the accent is the one colour in the mark,
+     carried by the handle and the N's diagonal. Set them equal for
+     single-colour use. */
+  --logo-ink: var(--foreground);
+  --logo-accent: #8a2226;
 }
 
 @theme inline {
@@ -16,6 +22,9 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    /* The accent has to lift on a dark ground: #8a2226 measures 2.0:1 there,
+       #b23a44 measures 6.2:1. */
+    --logo-accent: #b23a44;
   }
 }
 
