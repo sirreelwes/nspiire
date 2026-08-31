@@ -1,3 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any --
+ * The Prisma client and its transaction client are taken as `any` on purpose:
+ * this module must typecheck before `prisma generate` has run (CI/sandbox),
+ * so it never imports @prisma/client. Callers pass the real client.
+ */
+
 /**
  * Mirrors the DealState enum in prisma/schema.prisma. Kept local so the app
  * builds before `prisma generate` has run (CI/sandbox); if you change one,
@@ -61,7 +67,6 @@ export interface TransitionInput {
  * state change + log row are atomic. On PAID, also writes a TermsBenchmark
  * row (anonymized) — the moat gets fed automatically.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function transition(prisma: any, input: TransitionInput) {
   return prisma.$transaction(async (tx: any) => {
     const deal = await tx.deal.findUniqueOrThrow({
@@ -92,7 +97,6 @@ export async function transition(prisma: any, input: TransitionInput) {
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function writeBenchmark(tx: any, deal: any) {
   const terms = (deal.terms ?? {}) as Record<string, unknown>;
   const primary = deal.creator?.socials?.[0];

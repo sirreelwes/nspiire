@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const PIPELINE = [
   "Pitched",
   "Negotiating",
@@ -18,7 +20,22 @@ export default function Home() {
         Your AI agent. Fire your manager, keep the 20%.
       </p>
 
-      <section className="mt-10">
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link
+          href="/onboarding"
+          className="rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
+        >
+          Set up your agent
+        </Link>
+        <Link
+          href="/dashboard"
+          className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"
+        >
+          Dashboard
+        </Link>
+      </div>
+
+      <section className="mt-12">
         <h2 className="text-sm font-medium uppercase tracking-wide text-neutral-400">
           Deal pipeline
         </h2>
