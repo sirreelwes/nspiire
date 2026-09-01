@@ -56,6 +56,16 @@ export default function Home() {
           No deals yet. Scout is warming up.
         </p>
       </section>
+
+      <footer className="mt-16 border-t border-neutral-200 pt-6 text-sm text-neutral-500 dark:border-neutral-800">
+        <Link href="/terms" className="underline underline-offset-4">
+          Terms of Service
+        </Link>
+        {" · "}
+        <Link href="/privacy" className="underline underline-offset-4">
+          Privacy Policy
+        </Link>
+      </footer>
     </main>
   );
 }
