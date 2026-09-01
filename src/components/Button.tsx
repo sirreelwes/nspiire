@@ -8,10 +8,10 @@ import styles from "./Button.module.css";
  * ending at the vertical middle of the label. See Button.module.css for why
  * that shape needs a clipped pseudo-element rather than a border.
  *
- * Red is not the default. The logo spends oxblood exactly twice — one diagonal,
- * one arc — which is what makes it read as chosen rather than decorative. If
- * every button were red the accent would become wallpaper, so `primary` gets it
- * and everything else stays neutral.
+ * The accent is not the default. The logo spends burnt orange exactly twice —
+ * one diagonal, one arc — which is what makes it read as chosen rather than
+ * decorative. If every button carried it the accent would become wallpaper, so
+ * `primary` gets it and everything else stays neutral.
  */
 
 export type ArchVariant = "primary" | "secondary";
