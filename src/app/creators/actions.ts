@@ -9,6 +9,7 @@ import { parseMetrics, AudienceMetricsSchema } from "@/lib/creators/metrics";
 import { proposeTerms } from "@/lib/deals/advisor";
 import { followerBand } from "@/lib/deals/stateMachine";
 import { DealTermsSchema } from "@/lib/deals/terms";
+import { newInviteToken } from "@/lib/auth/creator";
 
 function text(form: FormData, key: string): string {
   const v = form.get(key);
@@ -225,4 +226,41 @@ export async function approveOpportunity(form: FormData) {
   revalidatePath("/deals");
   revalidatePath("/dashboard");
   redirect(`/deals/${deal.id}`);
+}
+
+/**
+ * Issue a creator an invite to set their own password.
+ *
+ * Deliberately does NOT email anything — there is no mail provider wired up,
+ * and pretending to send one would be worse than handing back a link. The
+ * operator copies the link and sends it however they already talk to the
+ * creator.
+ *
+ * Re-inviting replaces any outstanding token, so the previous link dies. That
+ * is the revoke button: invite again and the old one stops working.
+ */
+export async function inviteCreator(form: FormData) {
+  const creatorId = text(form, "creatorId");
+  const base = `/creators/${creatorId}`;
+  if (!creatorId) withError("/creators", "Missing creator.");
+
+  const creator = await prisma.creator.findUnique({
+    where: { id: creatorId },
+    select: { id: true, email: true },
+  });
+  if (!creator) withError("/creators", "No such creator.");
+  if (!creator.email) {
+    withError(base, "This creator has no email address to sign in with.");
+  }
+
+  const { token, expiresAt } = newInviteToken();
+  await prisma.creator.update({
+    where: { id: creator.id },
+    data: { inviteToken: token, inviteTokenExpiresAt: expiresAt },
+  });
+
+  revalidatePath(base);
+  // The token rides back in the URL so the page can render a copyable link.
+  // It is single-use and expires in 7 days.
+  redirect(`${base}?invite=${encodeURIComponent(token)}`);
 }

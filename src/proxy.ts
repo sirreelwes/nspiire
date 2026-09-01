@@ -26,12 +26,29 @@ const PUBLIC_PATHS = new Set([
   "/terms",
   "/privacy",
   "/api/tiktok/callback",
+  // A creator has to be able to reach their own sign-in and accept an invite
+  // before they have any session at all.
+  "/creator/login",
+  "/creator/set-password",
 ]);
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
+
+  // Two different audiences, two different cookies. A creator session must NOT
+  // open the operator console, and the operator cookie is not a creator
+  // session either — /creator scopes every query to the id inside its own
+  // cookie, so letting an operator cookie through would land on a page with no
+  // creator to scope to. Signatures are checked server-side in
+  // lib/auth/creator.ts; this only looks for presence.
+  if (pathname === "/creator" || pathname.startsWith("/creator/")) {
+    if (request.cookies.has("nspiire_creator")) return NextResponse.next();
+    const login = new URL("/creator/login", request.url);
+    return NextResponse.redirect(login);
+  }
+
   if (request.cookies.has("nspiire_op")) return NextResponse.next();
 
   // An API client should get a status code, not a login page. Redirecting

@@ -20,9 +20,11 @@ import {
 import {
   approveOpportunity,
   findBrandPartners,
+  inviteCreator,
   rejectOpportunity,
   saveManualMetrics,
 } from "@/app/creators/actions";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +32,9 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
   await requireOperator();
 
   const { id } = await props.params;
-  const { error, connected } = await props.searchParams;
+  const { error, connected, invite } = await props.searchParams;
+  const inviteUrl =
+    typeof invite === "string" && invite ? await inviteUrlFor(invite) : null;
 
   if (!hasDatabase) {
     return (
@@ -159,6 +163,47 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
               No social accounts on file for this creator.
             </p>
           )}
+        </Section>
+
+        {/*
+          Account access. There is no mail provider wired up, so this hands the
+          operator a link to send rather than pretending to email one. Inviting
+          again replaces the outstanding token, which is also how you revoke a
+          link you sent to the wrong place.
+        */}
+        <Section title="Account access">
+          {invite && typeof invite === "string" ? (
+            <div className="rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
+              <p className="text-base font-medium">
+                Invite link — send this to {creator.name}
+              </p>
+              <p
+                className="mt-3 break-all rounded-lg bg-neutral-100 px-4 py-3 font-mono text-sm dark:bg-neutral-900"
+              >
+                {inviteUrl}
+              </p>
+              <p className={`${hint} mt-3`}>
+                Single use, expires in 7 days. It is shown once — reissue below
+                if you lose it, which also kills this one.
+              </p>
+            </div>
+          ) : (
+            <p className="text-base text-neutral-600 dark:text-neutral-300">
+              {creator.passwordHash
+                ? `${creator.name} has an account and can sign in at /creator/login.`
+                : creator.inviteTokenExpiresAt &&
+                    creator.inviteTokenExpiresAt.getTime() > Date.now()
+                  ? "Invited — waiting for them to set a password."
+                  : "No account yet. Invite them to set a password."}
+            </p>
+          )}
+
+          <form action={inviteCreator} className="mt-4">
+            <input type="hidden" name="creatorId" value={creator.id} />
+            <button type="submit" className={ghostBtn}>
+              {creator.passwordHash ? "Send a reset link" : "Create invite link"}
+            </button>
+          </form>
         </Section>
 
         <Section title="Brand partners">
@@ -302,4 +347,13 @@ function Field({
       />
     </div>
   );
+}
+
+/** Absolute URL for an invite, built from the request host — the operator
+ *  copies this, so a relative path would be useless. */
+async function inviteUrlFor(token: string): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "nspiire.com";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}/creator/set-password?token=${encodeURIComponent(token)}`;
 }

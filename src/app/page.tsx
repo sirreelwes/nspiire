@@ -33,20 +33,21 @@ export default function Home() {
 
       {/* Full-width on a phone so they are thumb targets, not links. */}
       <div className="mt-10 flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
+        {/* Creators are who lands here, so the primary action is THEIR sign-in.
+            "Set up your agent" used to point at /onboarding, which is
+            operator-gated — a creator clicking it hit Wes's login. Nspiire is
+            invite-only, so there is no self-signup to offer yet. */}
         <Link
-          href="/onboarding"
+          href="/creator/login"
           className={arch("primary", "lg")}
         >
-          Set up your agent
+          Sign in
         </Link>
-        {/* Points at /login, not /dashboard. /dashboard is gated, so sending a
-            visitor there just bounces them to a login with no explanation —
-            better to say what the button actually does. */}
         <Link
           href="/login"
           className={arch("secondary", "lg")}
         >
-          Sign in
+          Operator console
         </Link>
       </div>
 

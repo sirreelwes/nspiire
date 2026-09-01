@@ -29,6 +29,19 @@ model Creator {
   approvalPolicy Json    @default("{}")
   deals         Deal[]
   opportunities Opportunity[]
+
+  // --- Creator sign-in ---
+  // The creator's own login, separate from the operator password. `email` above
+  // is the identity, so there is no second copy of it to drift.
+  //
+  // Null passwordHash means "invited but not activated" (or never invited) —
+  // that account cannot sign in. The invite token is single-use: consumed and
+  // nulled the moment a password is set, so a forwarded link is inert.
+  passwordHash         String?
+  inviteToken          String?   @unique
+  inviteTokenExpiresAt DateTime?
+  lastLoginAt          DateTime?
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
