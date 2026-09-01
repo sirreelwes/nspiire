@@ -21,6 +21,8 @@ src/lib/deals/stateMachine.ts   validated + logged deal transitions; PAID
                                 auto-writes anonymized TermsBenchmark rows
 src/lib/deals/fee.ts            the deal fee the brand pays Nspiire — how the
                                 product makes money. Pure arithmetic, no model call
+src/lib/deals/policy.ts         house rules: $250 sourcing floor, 30-day
+                                standard usage window
 src/lib/agents/             the virtual agent roster
   types.ts                  guardrails, approval policy, shared contracts
   claude.ts                 Claude client helper
@@ -40,6 +42,23 @@ src/lib/agents/             the virtual agent roster
 - Contracts never send without human sign-off.
 - MVP never holds funds (money-transmitter risk).
 
+## House deal policy
+
+`src/lib/deals/policy.ts` holds the rules that are Nspiire's rather than a
+creator's — creator guardrails are per-creator and the creator moves them,
+these apply to everyone:
+
+- **We don't source deals under $250.** Papering, chasing and tracking a deal
+  costs the same at $80 as at $8,000. Scout won't hunt for a format priced
+  below it and escalates if a whole rate card is under it; an operator can
+  still record a smaller deal a creator brought in themselves. The human
+  overrules the house, not the other way round.
+- **Deals open on a 30-day usage window, no exclusivity.** That is what a new
+  deal's terms are prefilled with, and it is the same number as the default
+  `maxUsageDays` guardrail — the opening ask sits exactly at the ceiling a
+  creator is assumed to accept without being asked. The fee schedule prices its
+  surcharges off it.
+
 ## How Nspiire gets paid
 
 A human manager takes 15–20% out of the creator's cheque. Nspiire charges the
@@ -53,10 +72,22 @@ rate banded like tax brackets, so the rate regresses as deals grow:
 | next $75,000 (to $100,000) | 3% |
 | above $100,000 | 2% |
 
-Then, in order: surcharges for terms that cost us work (+10% for usage rights
-of 180 days or more, +10% for 90 days or more of category exclusivity), the
-repeat-brand discount (−10% once a brand has paid on one deal here, −20% from
-the fifth), and finally the **$25 minimum** and $25,000-per-deal cap.
+Then, in order: surcharges for what the brand is asking for beyond the standard
+opening terms, the repeat-brand discount (−10% once a brand has paid on one deal
+here, −20% from the fifth), and finally the **$25 minimum** and $25,000-per-deal
+cap.
+
+Surcharges are priced off the house standard — 30 days of usage, no exclusivity:
+
+| Ask | Surcharge |
+| --- | --- |
+| usage 91–365 days | +10% |
+| usage over 365 days | +20% |
+| any exclusivity, under 90 days | +5% |
+| exclusivity 90 days or more | +10% |
+
+Usage gets a quarter of slack before anything bites; exclusivity gets none,
+because the standard is none.
 
 Worked baseline — a 1M-follower creator at $5,000 a video:
 
@@ -69,8 +100,10 @@ Creator is paid ............. $5,000
 
 The $25 minimum isn't a separate charge bolted on: it is the same 5% evaluated
 at $500, so it only ever binds below $500 and the schedule stays continuous —
-there is no deal size where a brand pays more and is billed less. Zero-value
-deals (gifting, product-only) are free.
+there is no deal size where a brand pays more and is billed less. Because we
+don't source below $250, the minimum has a known worst case: **10%** at the
+smallest deal we go looking for, sliding to 5% by $500. Zero-value deals
+(gifting, product-only) are free.
 
 The number is deliberately arithmetic, never a model call, for the same reason
 as the terms advisor: it goes on an invoice, and every line of it has to be

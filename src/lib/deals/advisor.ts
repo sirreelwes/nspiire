@@ -1,5 +1,5 @@
 import type { AudienceMetrics } from "@/lib/creators/metrics";
-import { formatMoney } from "@/lib/deals/terms";
+import { formatMoney, lookupByFormat } from "@/lib/deals/terms";
 
 /**
  * The deal-terms advisor — what a deal should be worth.
@@ -49,15 +49,6 @@ export interface AdviceInput {
   benchmarks?: BenchmarkRow[];
 }
 
-/** Case-insensitive lookup — rate-card keys are typed by the creator. */
-function lookup(map: Record<string, number>, format: string): number | null {
-  const want = format.trim().toLowerCase();
-  for (const [k, v] of Object.entries(map)) {
-    if (k.trim().toLowerCase() === want) return v;
-  }
-  return null;
-}
-
 function median(xs: number[]): number {
   const s = [...xs].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
@@ -99,7 +90,7 @@ function engagementMultiplier(m: AudienceMetrics): { factor: number; note: strin
 }
 
 export function proposeTerms(input: AdviceInput): TermsAdvice {
-  const floorCents = lookup(input.floorRates, input.format);
+  const floorCents = lookupByFormat(input.floorRates, input.format);
   const reasoning: string[] = [];
 
   if (input.metrics.source === "manual") {
@@ -135,7 +126,7 @@ export function proposeTerms(input: AdviceInput): TermsAdvice {
   }
 
   // 2. The creator's own rate card.
-  const card = lookup(input.rateCard, input.format);
+  const card = lookupByFormat(input.rateCard, input.format);
   if (card == null) {
     reasoning.push(
       `"${input.format}" isn't on the rate card and no closed deals match it, so there's nothing to price from. Add it to the rate card first.`,

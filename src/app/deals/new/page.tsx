@@ -7,6 +7,7 @@ import {
   Crumb,
   ErrorBanner,
   NotConnected,
+  OPENING_TERMS,
   Section,
   TermsFields,
   field,
@@ -52,7 +53,8 @@ export default async function NewDealPage(props: PageProps<"/deals/new">) {
       <p className="mt-2 text-sm text-neutral-500">
         Starts at <strong className="font-medium">Pitched</strong>. Every move
         after this is logged. Terms are optional now — you can fill them in as
-        the negotiation goes.
+        the negotiation goes. Usage and exclusivity open on the house standard:
+        30 days, no lockout.
       </p>
 
       <ErrorBanner message={typeof error === "string" ? error : undefined} />
@@ -141,7 +143,7 @@ export default async function NewDealPage(props: PageProps<"/deals/new">) {
           </Section>
 
           <Section title="Opening terms">
-            <TermsFields formats={data.formats} />
+            <TermsFields formats={data.formats} defaults={OPENING_TERMS} />
           </Section>
 
           <div className="sticky bottom-0 -mx-5 border-t border-neutral-200 bg-[var(--background)] px-5 py-4 dark:border-neutral-800">

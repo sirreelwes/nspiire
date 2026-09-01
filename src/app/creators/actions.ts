@@ -102,6 +102,9 @@ export async function findBrandPartners(form: FormData) {
       niche: creator.niche ?? "unspecified",
       platforms,
       guardrails: parseGuardrails(creator.guardrails),
+      // Scout needs the prices, not just the format names: it won't hunt for
+      // formats under the house sourcing floor (lib/deals/policy.ts).
+      rateCard: (creator.rateCard ?? {}) as Record<string, number>,
     },
     existingBrands: creator.opportunities.map((o) => o.brand.name),
   });

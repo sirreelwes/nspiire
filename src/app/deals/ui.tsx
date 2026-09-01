@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { DealState } from "@/lib/deals/stateMachine";
 import { STATE_LABELS } from "@/lib/deals/labels";
+import { DEFAULT_USAGE_DAYS } from "@/lib/deals/policy";
 
 /** Shared form styling for the deal pages — same look as /onboarding. */
 export const field =
@@ -86,6 +87,16 @@ export function Section({
   );
 }
 
+/** What a brand-new deal's terms open on — the house standard, not blank. */
+export const OPENING_TERMS: TermsDefaults = {
+  format: "",
+  amount: "",
+  usageDays: String(DEFAULT_USAGE_DAYS),
+  exclusivityDays: "0",
+  deliverables: "",
+  notes: "",
+};
+
 export interface TermsDefaults {
   format: string;
   amount: string;
@@ -161,6 +172,10 @@ export function TermsFields({
             placeholder="Blank = not discussed"
             defaultValue={defaults?.usageDays}
           />
+          <p className={hint}>
+            Deals open at {DEFAULT_USAGE_DAYS} days as standard. Longer is the
+            brand buying more, and the fee prices it that way.
+          </p>
         </div>
         <div>
           <label className={label} htmlFor="exclusivityDays">
@@ -174,6 +189,10 @@ export function TermsFields({
             placeholder="Blank = not discussed"
             defaultValue={defaults?.exclusivityDays}
           />
+          <p className={hint}>
+            None as standard — a category lockout costs the creator every other
+            brand in it.
+          </p>
         </div>
       </div>
       <div>

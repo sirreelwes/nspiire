@@ -5,6 +5,7 @@ import { DEAL_FLOW, type DealState } from "@/lib/deals/stateMachine";
 import { STATE_LABELS, actorLabel } from "@/lib/deals/labels";
 import { formatDays, formatMoney, parseTerms } from "@/lib/deals/terms";
 import { quoteDealFee, type FeeQuote } from "@/lib/deals/fee";
+import { checkDealPolicy, type PolicyNote } from "@/lib/deals/policy";
 import {
   checkDealGuardrails,
   parseGuardrails,
@@ -79,6 +80,7 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
     brandName: deal.brand.name,
     brandCategory: deal.brand.category,
   });
+  const policyNotes = checkDealPolicy(terms);
   const fee = quoteDealFee({ terms, priorPaidDeals: data.priorPaidDeals });
   const next = DEAL_FLOW[state];
 
@@ -103,6 +105,7 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
       <ErrorBanner message={typeof error === "string" ? error : undefined} />
 
       {violations.length > 0 && <GuardrailAlert violations={violations} />}
+      {policyNotes.length > 0 && <PolicyNotes notes={policyNotes} />}
 
       <div className="mt-10 flex flex-col gap-12">
         <Section title="Move this deal">
@@ -173,6 +176,23 @@ function GuardrailAlert({ violations }: { violations: GuardrailViolation[] }) {
         can&apos;t: terms outside guardrails always stop and ask.
       </p>
     </div>
+  );
+}
+
+/**
+ * House policy notes — deliberately quieter than GuardrailAlert. A guardrail is
+ * a promise to the creator and stops an agent dead; this is Nspiire's own view
+ * of which deals are worth doing, and it only ever tells you something.
+ */
+function PolicyNotes({ notes }: { notes: PolicyNote[] }) {
+  return (
+    <ul className="mt-6 flex flex-col gap-2 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800">
+      {notes.map((n, i) => (
+        <li key={`${n.field}-${i}`} className="text-sm text-neutral-500">
+          {n.message}
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -39,6 +39,11 @@ import { formatMoney, type DealTerms } from "@/lib/deals/terms";
  * schedule stays continuous: no deal size where paying more gets you a smaller
  * bill. Below $500 the deal still has to be papered, tracked and chased, and
  * that costs the same as it does at $5,000.
+ *
+ * That floor has a known worst case, because Nspiire does not source deals
+ * below $250 (`MIN_DEAL_CENTS` in lib/deals/policy.ts): at the smallest deal
+ * we go looking for, $25 is 10%, and the rate slides down to 5% by $500. 10%
+ * is the most this schedule ever charges anyone.
  */
 
 /** The floor. Also exactly the first-band rate at $500 — see the note above. */
@@ -65,15 +70,41 @@ export const FEE_TIERS: FeeTier[] = [
 ];
 
 /**
- * Surcharges. Both bill the brand for work the brand is asking for: a long
- * licence and a category lockout are extra value to them, and extra contract
- * and monitoring work for us. Thresholds sit well past what a normal deal
- * asks for, so an ordinary 30-day organic deal never sees them.
+ * Surcharges, priced off the house standard opening terms in
+ * lib/deals/policy.ts: 30 days of usage, no exclusivity. Both bill the brand
+ * for what it is asking for beyond that — a longer licence and a category
+ * lockout are more value to them, and more contract and monitoring work for us.
+ *
+ * Usage gets three months of slack before anything bites. A brand that runs an
+ * asset for a quarter is behaving normally, and billing for that would cost
+ * more in argument than it collects. Exclusivity gets no slack at all, because
+ * the standard is none: a creator turning down every other brand in a category
+ * is giving up real money, and the brand asking for it should feel that.
  */
-export const LONG_USAGE_DAYS = 180;
-export const LONG_USAGE_SURCHARGE = 0.1;
-export const LONG_EXCLUSIVITY_DAYS = 90;
-export const LONG_EXCLUSIVITY_SURCHARGE = 0.1;
+export interface SurchargeBand {
+  /** Applies from this many days, inclusive. Ordered high to low. */
+  fromDays: number;
+  rate: number;
+}
+
+export const USAGE_SURCHARGE_BANDS: SurchargeBand[] = [
+  { fromDays: 366, rate: 0.2 },
+  { fromDays: 91, rate: 0.1 },
+];
+
+export const EXCLUSIVITY_SURCHARGE_BANDS: SurchargeBand[] = [
+  { fromDays: 90, rate: 0.1 },
+  { fromDays: 1, rate: 0.05 },
+];
+
+/** First band the window reaches. Null when it's inside the standard. */
+function bandFor(
+  bands: SurchargeBand[],
+  days: number | null,
+): SurchargeBand | null {
+  if (days == null) return null;
+  return bands.find((b) => days >= b.fromDays) ?? null;
+}
 
 /**
  * Repeat-brand discount, on the count of deals this brand has already taken to
@@ -216,19 +247,18 @@ export function quoteDealFee(input: FeeInput): FeeQuote {
 
   // 1. Surcharges, on the tiered subtotal.
   const surcharges: { why: string; rate: number }[] = [];
-  if (terms.usageDays != null && terms.usageDays >= LONG_USAGE_DAYS) {
+  const usage = bandFor(USAGE_SURCHARGE_BANDS, terms.usageDays);
+  if (usage) {
     surcharges.push({
       why: `${terms.usageDays} days of usage rights`,
-      rate: LONG_USAGE_SURCHARGE,
+      rate: usage.rate,
     });
   }
-  if (
-    terms.exclusivityDays != null &&
-    terms.exclusivityDays >= LONG_EXCLUSIVITY_DAYS
-  ) {
+  const exclusivity = bandFor(EXCLUSIVITY_SURCHARGE_BANDS, terms.exclusivityDays);
+  if (exclusivity) {
     surcharges.push({
       why: `${terms.exclusivityDays} days of category exclusivity`,
-      rate: LONG_EXCLUSIVITY_SURCHARGE,
+      rate: exclusivity.rate,
     });
   }
   if (surcharges.length > 0) {

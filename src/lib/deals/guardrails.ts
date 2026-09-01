@@ -1,6 +1,6 @@
 import { GuardrailsSchema, type Guardrails } from "@/lib/agents/types";
 import type { DealTerms } from "@/lib/deals/terms";
-import { formatMoney } from "@/lib/deals/terms";
+import { formatMoney, lookupByFormat } from "@/lib/deals/terms";
 
 /**
  * Mechanical guardrail check for a set of deal terms.
@@ -70,7 +70,7 @@ export function checkDealGuardrails(
 
   // Floor rate is per format, so an unlisted format has no floor to check.
   if (terms.amountCents != null && terms.format) {
-    const floor = lookupFloor(g, terms.format);
+    const floor = lookupByFormat(g.floorRatesCents, terms.format);
     if (floor != null && terms.amountCents < floor) {
       out.push({
         field: "amountCents",
@@ -100,13 +100,4 @@ export function checkDealGuardrails(
   }
 
   return out;
-}
-
-/** Rate-card keys are creator-typed, so match case-insensitively. */
-function lookupFloor(g: Guardrails, format: string): number | null {
-  const wanted = format.trim().toLowerCase();
-  for (const [key, cents] of Object.entries(g.floorRatesCents)) {
-    if (key.trim().toLowerCase() === wanted) return cents;
-  }
-  return null;
 }

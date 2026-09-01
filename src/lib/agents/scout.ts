@@ -4,6 +4,8 @@ import type { AgentResult } from "./types";
 import type { Guardrails } from "./types";
 import type { AudienceMetrics } from "@/lib/creators/metrics";
 import { formatCount, formatRate } from "@/lib/creators/metrics";
+import { MIN_DEAL_CENTS } from "@/lib/deals/policy";
+import { formatMoney, lookupByFormat } from "@/lib/deals/terms";
 
 /**
  * Scout — finds and scores brand partners for a creator (blueprint §4).
@@ -46,6 +48,8 @@ export interface ScoutInput {
       metrics: AudienceMetrics;
     }[];
     guardrails: Guardrails;
+    /** The Creator.rateCard column — `{ [format]: cents }`. */
+    rateCard: Record<string, number>;
   };
   /** Brands already in the pipeline, so Scout doesn't re-suggest them. */
   existingBrands?: string[];
@@ -58,7 +62,8 @@ Given a creator's real audience numbers and their guardrails, propose brands tha
 
 Rules:
 - The do-not-work-with list is absolute. Never propose a brand on it, or one whose category is on it.
-- Only suggest formats that appear in the creator's offered formats.
+- Only suggest formats that appear in the creator's offered formats. Those have already been filtered to the ones worth pursuing — do not suggest any other.
+- Every brand you propose must plausibly have the budget for the rate shown against the format you suggest. A brand that only ever does product-gifting is not a lead.
 - Do not invent contact names or email addresses. "evidence" must be something a human could go and check — a named creator-sponsorship the brand has run, an affiliate or ambassador programme, a category norm — not a guess dressed up as a fact.
 - If you are unsure a brand actually sponsors creators, say so in the evidence rather than asserting it.
 - fitScore is about fit for THIS creator. Reserve above 0.8 for brands you would bet on.
@@ -67,6 +72,24 @@ Rules:
 export async function runScout(
   input: ScoutInput,
 ): Promise<AgentResult<ScoredOpportunity[]>> {
+  // House sourcing floor (lib/deals/policy.ts): Nspiire does not go looking
+  // for deals under $250, so a format priced below it is not something to send
+  // Scout hunting for. Filtering here rather than in the prompt means the
+  // model is never offered the option, and never has to be trusted with it.
+  const pursuable = input.creator.guardrails.offeredFormats.filter((format) => {
+    const rate = lookupByFormat(input.creator.rateCard, format);
+    return rate != null && rate >= MIN_DEAL_CENTS;
+  });
+  if (pursuable.length === 0) {
+    return {
+      agent: "scout",
+      output: [],
+      escalation: {
+        reason: `Nothing on ${input.creator.name}'s rate card reaches the ${formatMoney(MIN_DEAL_CENTS)} minimum Nspiire sources at, so there's nothing to hunt for. Raise the rate card, or run this deal by hand.`,
+      },
+    };
+  }
+
   const user = JSON.stringify({
     creator: {
       niche: input.creator.niche,
@@ -86,7 +109,12 @@ export async function runScout(
     },
     guardrails: {
       doNotWorkWith: input.creator.guardrails.doNotWorkWith,
-      offeredFormats: input.creator.guardrails.offeredFormats,
+      // Only the formats worth pursuing, each with what the creator charges —
+      // a brand that can't fund the rate isn't a lead.
+      offeredFormats: pursuable.map((format) => ({
+        format,
+        rate: formatMoney(lookupByFormat(input.creator.rateCard, format)),
+      })),
     },
     alreadyInPipeline: input.existingBrands ?? [],
     howMany: input.count ?? 12,
@@ -115,11 +143,16 @@ export async function runScout(
     (input.existingBrands ?? []).map((b) => b.trim().toLowerCase()),
   );
 
+  const pursuableKeys = new Set(pursuable.map((f) => f.trim().toLowerCase()));
+
   const clean = parsed.opportunities.filter((o) => {
     const name = o.brandName.trim().toLowerCase();
     const category = o.category.trim().toLowerCase();
     if (!name || seen.has(name)) return false;
     if (blocked.some((b) => name.includes(b) || category.includes(b))) return false;
+    // Same reason as the blocked-brand filter above: a model told to stay
+    // inside the pursuable formats mostly will, and "mostly" isn't a floor.
+    if (!pursuableKeys.has(o.suggestedFormat.trim().toLowerCase())) return false;
     seen.add(name);
     return true;
   });

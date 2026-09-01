@@ -55,6 +55,24 @@ export function formatMoney(cents: number | null, currency = "USD"): string {
   }).format(cents / 100);
 }
 
+/**
+ * Look a format up in a `{ [format]: cents }` map — a rate card, floor rates.
+ * Those keys are typed by the creator, so "Dedicated Video" and "dedicated
+ * video" are the same row. Shared, so the terms advisor, the guardrail check
+ * and Scout all agree on what "the same format" means.
+ */
+export function lookupByFormat(
+  map: Record<string, number>,
+  format: string,
+): number | null {
+  const want = format.trim().toLowerCase();
+  if (!want) return null;
+  for (const [key, cents] of Object.entries(map)) {
+    if (key.trim().toLowerCase() === want) return cents;
+  }
+  return null;
+}
+
 export function formatDays(days: number | null): string {
   if (days == null) return "—";
   if (days === 0) return "None";
