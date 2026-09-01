@@ -210,3 +210,87 @@ export async function creatorRequestTermsChanges(form: FormData): Promise<void> 
   revalidatePath(`/deals/${dealId}`);
   redirect("/creator");
 }
+
+/* ------------------------------------------------- completing the profile */
+
+/**
+ * A creator fills in their own niche, numbers and rates.
+ *
+ * Invites carry only a name and an email, so this is what turns an empty
+ * account into one Scout and the terms advisor can work with: Scout needs the
+ * niche, the follower count and the offered formats; the advisor needs the rate
+ * card and the floor.
+ *
+ * The creator entering these rather than the operator is the point — the
+ * operator would be filling in someone else's business from memory.
+ */
+export async function completeCreatorProfile(form: FormData): Promise<void> {
+  const creator = await requireCreator();
+
+  const niche = text(form, "niche");
+  const handle = text(form, "handle").replace(/^@/, "");
+  const followers = Number(text(form, "followerCount").replace(/[^0-9]/g, ""));
+  const format = text(form, "format");
+  const rate = Number(text(form, "rate").replace(/[^0-9.]/g, ""));
+  const floor = Number(text(form, "floor").replace(/[^0-9.]/g, ""));
+  const maxUsageDays = Number(text(form, "maxUsageDays").replace(/[^0-9]/g, ""));
+  const maxExclusivityDays = Number(
+    text(form, "maxExclusivityDays").replace(/[^0-9]/g, ""),
+  );
+  const doNotWorkWith = text(form, "doNotWorkWith")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  if (!niche || !handle || !Number.isFinite(followers) || followers <= 0) {
+    redirect("/creator?error=missing");
+  }
+  if (!format || !Number.isFinite(rate) || rate <= 0) {
+    redirect("/creator?error=rate");
+  }
+
+  const rateCents = Math.round(rate * 100);
+  // A floor above the asking rate would make every deal fail its own
+  // guardrail, so an unset or nonsensical floor becomes half the rate.
+  const floorCents =
+    Number.isFinite(floor) && floor > 0 && floor * 100 <= rateCents
+      ? Math.round(floor * 100)
+      : Math.round(rateCents / 2);
+
+  await prisma.creator.update({
+    where: { id: creator.id },
+    data: {
+      niche,
+      rateCard: { [format]: rateCents },
+      guardrails: {
+        offeredFormats: [format],
+        floorRatesCents: { [format]: floorCents },
+        maxUsageDays: Number.isFinite(maxUsageDays) ? maxUsageDays : 30,
+        maxExclusivityDays: Number.isFinite(maxExclusivityDays)
+          ? maxExclusivityDays
+          : 0,
+        doNotWorkWith,
+      },
+    },
+  });
+
+  // One TikTok account. Connecting TikTok later replaces the follower count
+  // with synced numbers; this is the hand-entered starting point.
+  const existing = await prisma.socialAccount.findFirst({
+    where: { creatorId: creator.id, platform: "TIKTOK" },
+  });
+  if (existing) {
+    await prisma.socialAccount.update({
+      where: { id: existing.id },
+      data: { handle, followerCount: followers },
+    });
+  } else {
+    await prisma.socialAccount.create({
+      data: { creatorId: creator.id, platform: "TIKTOK", handle, followerCount: followers },
+    });
+  }
+
+  revalidatePath("/creator");
+  revalidatePath(`/creators/${creator.id}`);
+  redirect("/creator");
+}

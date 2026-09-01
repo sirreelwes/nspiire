@@ -19,6 +19,7 @@ import {
   creatorSignOut,
 } from "./actions";
 import { arch } from "@/components/Button";
+import { CreatorSetupForm } from "./setup-form";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +32,9 @@ export const dynamic = "force-dynamic";
  * reason: there is no shared page where a missing `where` clause leaks a
  * roster.
  */
-export default async function CreatorHomePage() {
+export default async function CreatorHomePage(props: PageProps<"/creator">) {
   const creator = await requireCreator();
+  const { error } = await props.searchParams;
 
   const [socials, deals, opportunities] = await Promise.all([
     prisma.socialAccount.findMany({ where: { creatorId: creator.id } }),
@@ -54,6 +56,11 @@ export default async function CreatorHomePage() {
   const primary = socials[0];
   const metrics = parseMetrics(primary?.metrics);
 
+  // An invite carries only a name and an email, so a new account has no niche,
+  // no handle and no rate card — nothing Scout or the advisor can run on.
+  // Showing an empty dashboard would just be a dead end.
+  const needsSetup = !creator.niche || !primary;
+
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 sm:py-16">
       <header className="mb-10 flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -70,6 +77,13 @@ export default async function CreatorHomePage() {
         </form>
       </header>
 
+      {needsSetup ? (
+        <CreatorSetupForm
+          name={creator.name}
+          error={typeof error === "string" ? error : undefined}
+        />
+      ) : (
+        <>
       <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
         {creator.name}
       </h1>
@@ -246,6 +260,8 @@ export default async function CreatorHomePage() {
           )}
         </div>
       </section>
+        </>
+      )}
     </main>
   );
 }

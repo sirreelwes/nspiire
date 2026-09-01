@@ -59,8 +59,12 @@ export default async function DashboardPage() {
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           Dashboard
         </h1>
-        <Link href="/onboarding" className={ONBOARD_BUTTON}>
-          Onboard a creator
+        {/* Invite, not onboard. The full form asks the operator to fill in
+            someone else's niche, socials and rates from memory; this asks for
+            an email and lets the creator do it themselves. The long form is
+            still reachable from the invite page. */}
+        <Link href="/creators/invite" className={ONBOARD_BUTTON}>
+          Invite a creator
         </Link>
       </div>
 

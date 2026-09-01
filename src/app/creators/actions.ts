@@ -277,3 +277,45 @@ export async function inviteCreator(form: FormData) {
   // It is single-use and expires in 7 days.
   redirect(`${base}?invite=${encodeURIComponent(token)}`);
 }
+
+/**
+ * Invite a creator by email — no profile required.
+ *
+ * The full onboarding form asks the operator for the creator's niche, socials,
+ * rate card and guardrails, which is the operator filling in someone else's
+ * details from memory. This creates the account with just a name and an email
+ * and lets the creator fill in their own, which is both less work and better
+ * data. They complete it on first sign-in.
+ */
+export async function inviteNewCreator(form: FormData) {
+  const name = text(form, "name");
+  const email = text(form, "email").toLowerCase();
+  const base = "/creators/invite";
+
+  if (!name) withError(base, "Name is required.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    withError(base, "Enter a valid email address.");
+  }
+
+  const existing = await prisma.creator.findUnique({ where: { email } });
+  if (existing) {
+    withError(base, `${email} is already on the roster as ${existing.name}.`);
+  }
+
+  const { token, expiresAt } = newInviteToken();
+  const creator = await prisma.creator.create({
+    data: {
+      name,
+      email,
+      inviteToken: token,
+      inviteTokenExpiresAt: expiresAt,
+      // Left empty on purpose — the creator fills these in themselves.
+      guardrails: {},
+      rateCard: {},
+    },
+  });
+
+  revalidatePath("/creators");
+  revalidatePath("/dashboard");
+  redirect(`/creators/${creator.id}?invite=${encodeURIComponent(token)}`);
+}

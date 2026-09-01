@@ -21,9 +21,9 @@ export default async function CreatorsPage() {
     <main className="mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:py-14">
       <ConsoleNav current="/creators" />
       <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Creators</h1>
-        <Link href="/onboarding" className={primaryBtn}>
-          Onboard a creator
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Creators</h1>
+        <Link href="/creators/invite" className={primaryBtn}>
+          Invite a creator
         </Link>
       </div>
 
