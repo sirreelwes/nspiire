@@ -2,7 +2,9 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireCreator } from "@/lib/auth/creator";
 import {
   CREATOR_COOKIE,
   hashPassword,
@@ -106,4 +108,44 @@ export async function setCreatorPassword(form: FormData): Promise<void> {
 export async function creatorSignOut(): Promise<void> {
   (await cookies()).delete(CREATOR_COOKIE);
   redirect("/");
+}
+
+/* ------------------------------------------------- reviewing the shortlist */
+
+/**
+ * The creator's decision on a brand their agent found.
+ *
+ * This is the outreach gate made real. The schema always had QUALIFIED
+ * ("human-approved for outreach") but nothing set it — the operator's approve
+ * jumped SOURCED straight to CONVERTED and created a deal, so a brand could be
+ * pitched without the creator having seen it. Now only the creator moves an
+ * opportunity out of SOURCED, and approveOpportunity refuses anything that is
+ * not QUALIFIED.
+ *
+ * Scoped with updateMany and creatorId from the SESSION, never from the form:
+ * a mismatched id updates zero rows rather than someone else's shortlist.
+ */
+async function decide(form: FormData, status: "QUALIFIED" | "REJECTED") {
+  const creator = await requireCreator();
+  const opportunityId = text(form, "opportunityId");
+  if (!opportunityId) redirect("/creator");
+
+  await prisma.opportunity.updateMany({
+    where: { id: opportunityId, creatorId: creator.id, status: "SOURCED" },
+    data: { status },
+  });
+
+  revalidatePath("/creator");
+  revalidatePath(`/creators/${creator.id}`);
+  redirect("/creator");
+}
+
+/** "Yes, you can approach them." */
+export async function creatorApproveOutreach(form: FormData): Promise<void> {
+  await decide(form, "QUALIFIED");
+}
+
+/** "No, don't." */
+export async function creatorDeclineOutreach(form: FormData): Promise<void> {
+  await decide(form, "REJECTED");
 }

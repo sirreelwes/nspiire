@@ -172,6 +172,19 @@ export async function approveOpportunity(form: FormData) {
   if (!opp) withError(base, "No such opportunity.");
   if (opp.deal) redirect(`/deals/${opp.deal.id}`);
 
+  // The creator's outreach gate, enforced rather than assumed. QUALIFIED means
+  // they have seen this brand and said yes; SOURCED means they have not looked
+  // yet. Converting a SOURCED opportunity would create a deal for a brand the
+  // creator has never been shown, which is exactly what this is here to stop.
+  if (opp.status !== "QUALIFIED") {
+    withError(
+      base,
+      opp.status === "REJECTED"
+        ? `${opp.creator.name} declined ${opp.brand.name}.`
+        : `${opp.creator.name} hasn't approved outreach to ${opp.brand.name} yet.`,
+    );
+  }
+
   const primary = opp.creator.socials[0];
   const metrics = parseMetrics(primary?.metrics);
   const format = opp.suggestedFormat ?? "";

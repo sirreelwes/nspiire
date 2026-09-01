@@ -65,8 +65,13 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
     ...stored,
     followerCount: stored.followerCount ?? primary?.followerCount ?? null,
   };
-  const shortlist = creator.opportunities.filter((o) => o.status === "SOURCED");
-  const decided = creator.opportunities.filter((o) => o.status !== "SOURCED");
+  // SOURCED is waiting on the CREATOR, not on the operator. Only QUALIFIED —
+  // the creator has seen the brand and approved outreach — can be converted.
+  const awaitingCreator = creator.opportunities.filter((o) => o.status === "SOURCED");
+  const shortlist = creator.opportunities.filter((o) => o.status === "QUALIFIED");
+  const decided = creator.opportunities.filter(
+    (o) => o.status !== "SOURCED" && o.status !== "QUALIFIED",
+  );
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:py-14">
@@ -213,13 +218,33 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
               {creator.opportunities.length ? "Find more brands" : "Find brand partners"}
             </button>
             <p className={`${hint} mt-2`}>
-              Scout scores fit against her niche, size and engagement. Nothing reaches a
-              brand from here — the shortlist is yours to approve.
+              Scout scores fit against her niche, size and engagement. Four at a
+              time — run it again for four more. Nothing reaches a brand until
+              the creator approves it in their own account.
             </p>
           </form>
 
+          {awaitingCreator.length > 0 && (
+            <div className="mt-6 rounded-xl border border-dashed border-neutral-300 px-4 py-4 dark:border-neutral-700">
+              <p className="text-base font-medium">
+                {awaitingCreator.length} waiting on {creator.name.split(" ")[0]}
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {awaitingCreator.map((o) => (
+                  <li key={o.id} className="text-sm text-neutral-500">
+                    {o.brand.name}
+                  </li>
+                ))}
+              </ul>
+              <p className={`${hint} mt-3`}>
+                They approve outreach from their own sign-in. You cannot price a
+                brand they have not seen.
+              </p>
+            </div>
+          )}
+
           {shortlist.length > 0 && (
-            <ul className="mt-6 flex flex-col gap-3">
+            <ul className="mt-6 flex flex-col gap-3" aria-label="Approved for outreach">
               {shortlist.map((o) => (
                 <li
                   key={o.id}

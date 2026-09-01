@@ -6,7 +6,12 @@ import { parseMetrics, formatCount, formatRate } from "@/lib/creators/metrics";
 import { parseTerms, formatMoney } from "@/lib/deals/terms";
 import { STATE_LABELS } from "@/lib/deals/labels";
 import type { DealState } from "@/lib/deals/stateMachine";
-import { creatorSignOut } from "./actions";
+import {
+  creatorApproveOutreach,
+  creatorDeclineOutreach,
+  creatorSignOut,
+} from "./actions";
+import { arch } from "@/components/Button";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +34,13 @@ export default async function CreatorHomePage() {
       include: { brand: true },
       orderBy: { updatedAt: "desc" },
     }),
+    // SOURCED = waiting on the creator. QUALIFIED = they said yes and it is
+    // now with their manager. Both are shown, so approving something does not
+    // make it vanish with no trace of what they decided.
     prisma.opportunity.findMany({
-      where: { creatorId: creator.id, status: "SOURCED" },
+      where: { creatorId: creator.id, status: { in: ["SOURCED", "QUALIFIED"] } },
       include: { brand: true },
-      orderBy: { fitScore: "desc" },
+      orderBy: [{ status: "asc" }, { fitScore: "desc" }],
     }),
   ]);
 
@@ -124,36 +132,66 @@ export default async function CreatorHomePage() {
 
       <section className="mt-12">
         <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
-          Brands your agent found
+          Waiting on you
         </h2>
+        <p className="mt-2 text-base text-neutral-500">
+          Your agent found these. Nobody is contacted until you say yes.
+        </p>
+
         <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
           {opportunities.length === 0 ? (
             <p className="px-5 py-4 text-base text-neutral-500">
-              No shortlist right now.
+              Nothing to review right now.
             </p>
           ) : (
             <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {opportunities.map((o) => (
-                <li key={o.id} className="px-5 py-4">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-base font-medium">{o.brand.name}</span>
+                <li key={o.id} className="px-5 py-5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <span className="text-lg font-medium">{o.brand.name}</span>
                     <span className="shrink-0 text-sm text-neutral-500">
                       {Math.round(o.fitScore * 100)}% fit
+                      {o.suggestedFormat ? ` · ${o.suggestedFormat}` : ""}
                     </span>
                   </div>
+
                   {o.rationale && (
-                    <p className="mt-1 text-base leading-snug text-neutral-500">
+                    <p className="mt-2 text-base leading-snug text-neutral-600 dark:text-neutral-300">
                       {o.rationale}
                     </p>
+                  )}
+                  {o.evidence && (
+                    <p className="mt-2 text-sm leading-snug text-neutral-500">
+                      <span className="font-medium">Why them: </span>
+                      {o.evidence}
+                    </p>
+                  )}
+
+                  {o.status === "QUALIFIED" ? (
+                    <p className="mt-4 text-base font-medium text-[var(--logo-accent)]">
+                      You approved this — your manager is taking it from here.
+                    </p>
+                  ) : (
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <form action={creatorApproveOutreach}>
+                        <input type="hidden" name="opportunityId" value={o.id} />
+                        <button type="submit" className={arch("primary", "md")}>
+                          Approve outreach
+                        </button>
+                      </form>
+                      <form action={creatorDeclineOutreach}>
+                        <input type="hidden" name="opportunityId" value={o.id} />
+                        <button type="submit" className={arch("secondary", "md")}>
+                          Not interested
+                        </button>
+                      </form>
+                    </div>
                   )}
                 </li>
               ))}
             </ul>
           )}
         </div>
-        <p className="mt-4 text-sm text-neutral-500">
-          Nothing goes to a brand without your say-so.
-        </p>
       </section>
     </main>
   );
