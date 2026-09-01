@@ -1,3 +1,4 @@
+import { ConsoleNav } from "@/components/ConsoleNav";
 import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -65,7 +66,7 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:py-14">
-      <Crumb href="/dashboard">← Dashboard</Crumb>
+      <ConsoleNav current="/creators" />
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">

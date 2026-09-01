@@ -39,11 +39,14 @@ export default function Home() {
         >
           Set up your agent
         </Link>
+        {/* Points at /login, not /dashboard. /dashboard is gated, so sending a
+            visitor there just bounces them to a login with no explanation —
+            better to say what the button actually does. */}
         <Link
-          href="/dashboard"
+          href="/login"
           className={arch("secondary", "lg")}
         >
-          Dashboard
+          Sign in
         </Link>
       </div>
 

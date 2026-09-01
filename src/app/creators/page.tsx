@@ -1,3 +1,4 @@
+import { ConsoleNav } from "@/components/ConsoleNav";
 import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { prisma, hasDatabase } from "@/lib/prisma";
@@ -18,7 +19,7 @@ export default async function CreatorsPage() {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-5 py-10 sm:py-14">
-      <Crumb href="/dashboard">← Dashboard</Crumb>
+      <ConsoleNav current="/creators" />
       <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Creators</h1>
         <Link href="/onboarding" className={primaryBtn}>

@@ -1,7 +1,7 @@
 import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
-import { LogoMark } from "@/components/Logo";
 import { arch } from "@/components/Button";
+import { ConsoleNav } from "@/components/ConsoleNav";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { DEAL_FLOW, type DealState } from "@/lib/deals/stateMachine";
 import { ASIDE, PIPELINE, STATE_LABELS } from "@/lib/deals/labels";
@@ -19,15 +19,10 @@ const GATES = [
 
 type Counts = Partial<Record<DealState, number>>;
 
-/* The header actions are real buttons, not underlined text: this is a phone
-   surface first, and a 14px link is not a thumb target. Same shape as the
-   home page's pair so the two pages feel like one product.
-
-   Note these are OPERATOR actions — "Creators" lists the whole roster and
-   "Onboard a creator" adds one. This page is the agency console, not a
-   creator's own view of their deals. */
-const NAV_BUTTON = arch("secondary", "md");
-const NAV_BUTTON_PRIMARY = arch("primary", "md");
+/* Onboarding is an OPERATOR action — it adds a creator to the roster — so it
+   sits with the page title rather than in ConsoleNav, which is for moving
+   between pages rather than doing things. */
+const ONBOARD_BUTTON = arch("primary", "md");
 
 async function load() {
   if (!hasDatabase) return { ready: false as const };
@@ -58,25 +53,15 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:py-16">
-      <Link href="/" aria-label="Nspiire home" className="inline-block">
-        <LogoMark size={34} />
-      </Link>
+      <ConsoleNav current="/dashboard" />
 
-      <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           Dashboard
         </h1>
-        <nav className="flex flex-wrap gap-3">
-          <Link href="/creators" className={NAV_BUTTON}>
-            Creators
-          </Link>
-          <Link href="/deals" className={NAV_BUTTON}>
-            All deals
-          </Link>
-          <Link href="/onboarding" className={NAV_BUTTON_PRIMARY}>
-            Onboard a creator
-          </Link>
-        </nav>
+        <Link href="/onboarding" className={ONBOARD_BUTTON}>
+          Onboard a creator
+        </Link>
       </div>
 
       {!data.ready && (

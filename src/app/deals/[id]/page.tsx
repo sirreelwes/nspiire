@@ -1,3 +1,4 @@
+import { ConsoleNav } from "@/components/ConsoleNav";
 import { requireOperator } from "@/lib/auth/operator";
 import { notFound } from "next/navigation";
 import { prisma, hasDatabase } from "@/lib/prisma";
@@ -54,7 +55,8 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
   if (!data.ready) {
     return (
       <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 sm:py-16">
-        <Crumb href="/deals">← Deals</Crumb>
+        <ConsoleNav current="/deals" />
+      <Crumb href="/deals">← Deals</Crumb>
         <NotConnected unreachable={"unreachable" in data && data.unreachable} />
       </main>
     );
@@ -75,6 +77,7 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 sm:py-16">
+      <ConsoleNav current="/deals" />
       <Crumb href="/deals">← Deals</Crumb>
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">

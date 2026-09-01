@@ -1,3 +1,4 @@
+import { ConsoleNav } from "@/components/ConsoleNav";
 import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { prisma, hasDatabase } from "@/lib/prisma";
@@ -45,6 +46,7 @@ export default async function NewDealPage(props: PageProps<"/deals/new">) {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-5 py-10 sm:py-16">
+      <ConsoleNav current="/deals" />
       <Crumb href="/deals">← Deals</Crumb>
       <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
         New deal
