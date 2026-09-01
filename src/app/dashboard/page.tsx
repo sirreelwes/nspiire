@@ -17,6 +17,18 @@ const GATES = [
 
 type Counts = Partial<Record<DealState, number>>;
 
+/* The header actions are real buttons, not underlined text: this is a phone
+   surface first, and a 14px link is not a thumb target. Same shape as the
+   home page's pair so the two pages feel like one product.
+
+   Note these are OPERATOR actions — "Creators" lists the whole roster and
+   "Onboard a creator" adds one. This page is the agency console, not a
+   creator's own view of their deals. */
+const NAV_BUTTON =
+  "rounded-xl border border-neutral-300 px-5 py-3 text-base font-medium text-neutral-700 dark:border-neutral-700 dark:text-neutral-300";
+const NAV_BUTTON_PRIMARY =
+  "rounded-xl border border-transparent bg-neutral-900 px-5 py-3 text-base font-medium text-white dark:bg-white dark:text-neutral-900";
+
 async function load() {
   if (!hasDatabase) return { ready: false as const };
   try {
@@ -45,37 +57,28 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:py-16">
       <Link href="/" aria-label="Nspiire home" className="inline-block">
-        <LogoMark size={28} />
+        <LogoMark size={34} />
       </Link>
 
-      <div className="mt-6 flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+      <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           Dashboard
         </h1>
-        <div className="flex flex-wrap items-baseline gap-4">
-          <Link
-            href="/creators"
-            className="text-sm font-medium underline underline-offset-4"
-          >
+        <nav className="flex flex-wrap gap-3">
+          <Link href="/creators" className={NAV_BUTTON}>
             Creators
           </Link>
-          <Link
-            href="/deals"
-            className="text-sm font-medium underline underline-offset-4"
-          >
+          <Link href="/deals" className={NAV_BUTTON}>
             All deals
           </Link>
-          <Link
-            href="/onboarding"
-            className="text-sm font-medium underline underline-offset-4"
-          >
+          <Link href="/onboarding" className={NAV_BUTTON_PRIMARY}>
             Onboard a creator
           </Link>
-        </div>
+        </nav>
       </div>
 
       {!data.ready && (
-        <p className="mt-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <p className="mt-6 rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-base text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           {"unreachable" in data && data.unreachable
             ? "Database unreachable, or the schema hasn't been migrated yet — run npx prisma migrate deploy."
             : "No DATABASE_URL set. Counts below are empty until Postgres is connected."}
@@ -84,11 +87,11 @@ export default async function DashboardPage() {
 
       <section className="mt-10">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-neutral-400">
+          <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
             Deal pipeline
           </h2>
           {data.ready && (
-            <span className="text-sm text-neutral-500">
+            <span className="text-base text-neutral-500">
               {data.creatorCount} creator{data.creatorCount === 1 ? "" : "s"}
             </span>
           )}
@@ -114,7 +117,7 @@ export default async function DashboardPage() {
             />
           ))}
         </ul>
-        <p className="mt-3 text-xs text-neutral-500">
+        <p className="mt-4 text-sm text-neutral-500">
           Every move between these is written through{" "}
           <code className="font-mono">transition()</code> and logged — that log
           is what the terms advisor learns from.
@@ -123,23 +126,23 @@ export default async function DashboardPage() {
 
       <section className="mt-12 grid gap-8 lg:grid-cols-2">
         <div>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-neutral-400">
+          <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
             Approvals queue
           </h2>
           <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
-            <p className="border-b border-neutral-200 px-4 py-3 text-sm text-neutral-500 dark:border-neutral-800">
+            <p className="border-b border-neutral-200 px-5 py-4 text-base text-neutral-500 dark:border-neutral-800">
               Nothing waiting on you. Agents park here whenever a gate trips.
             </p>
             <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {GATES.map((g) => (
                 <li
                   key={g.key}
-                  className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+                  className="flex items-center justify-between gap-3 px-5 py-4 text-base"
                 >
                   <span className="text-neutral-700 dark:text-neutral-300">
                     {g.label}
                     {g.locked && (
-                      <span className="ml-2 rounded border border-neutral-300 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500 dark:border-neutral-700">
+                      <span className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-[11px] uppercase tracking-wide text-neutral-500 dark:border-neutral-700">
                         always on
                       </span>
                     )}
@@ -152,7 +155,7 @@ export default async function DashboardPage() {
         </div>
 
         <div>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-neutral-400">
+          <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
             Recent deals
           </h2>
           <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
@@ -162,7 +165,7 @@ export default async function DashboardPage() {
                   <li key={d.id}>
                     <Link
                       href={`/deals/${d.id}`}
-                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+                      className="flex items-center justify-between gap-3 px-5 py-4 text-base"
                     >
                       <span className="truncate">
                         {d.brand.name}
@@ -179,7 +182,7 @@ export default async function DashboardPage() {
                 ))}
               </ul>
             ) : (
-              <p className="px-4 py-3 text-sm text-neutral-500">
+              <p className="px-5 py-4 text-base text-neutral-500">
                 No deals yet. Scout is warming up —{" "}
                 <Link href="/deals/new" className="underline underline-offset-4">
                   add one by hand
@@ -208,7 +211,7 @@ function StageCard({
     <li>
       <Link
         href={`/deals?state=${state}`}
-        className={`block rounded-xl border px-3 py-3 ${
+        className={`block rounded-xl border px-4 py-5 ${
           muted
             ? "border-dashed border-neutral-200 dark:border-neutral-800"
             : "border-neutral-200 dark:border-neutral-800"
@@ -219,8 +222,8 @@ function StageCard({
             : "Terminal"
         }
       >
-        <div className="text-2xl font-semibold tabular-nums">{count}</div>
-        <div className="mt-0.5 text-xs text-neutral-500">
+        <div className="text-3xl font-semibold tabular-nums">{count}</div>
+        <div className="mt-1 text-sm text-neutral-500">
           {STATE_LABELS[state]}
         </div>
       </Link>

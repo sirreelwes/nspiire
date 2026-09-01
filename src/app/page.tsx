@@ -34,7 +34,7 @@ export default function Home() {
       <div className="mt-10 flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
         <Link
           href="/onboarding"
-          className="rounded-xl bg-neutral-900 px-7 py-4.5 text-lg font-medium text-white dark:bg-white dark:text-neutral-900"
+          className="rounded-xl border border-transparent bg-neutral-900 px-7 py-4.5 text-lg font-medium text-white dark:bg-white dark:text-neutral-900"
         >
           Set up your agent
         </Link>
