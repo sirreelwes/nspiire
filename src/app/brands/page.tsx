@@ -12,13 +12,20 @@ import {
 export const dynamic = "force-dynamic";
 
 const LABELS: Record<string, string> = {
-  PENDING: "Waiting on you",
+  PENDING: "On the list",
   ACTIVE: "Member",
   DECLINED: "Declined",
   CANCELLED: "Cancelled",
 };
 
-/** Membership applications. $100/mo, but the gate here is judgement. */
+/**
+ * The interest list — and, more usefully, the demand behind it.
+ *
+ * Nobody is charged. What each brand says they are looking for is the point of
+ * this page while the roster is small: it says which creators to go and
+ * recruit, which is a far stronger position than recruiting and hoping demand
+ * shows up.
+ */
 export default async function BrandsPage() {
   await requireOperator("/brands");
 
@@ -44,17 +51,19 @@ export default async function BrandsPage() {
 
       <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Brands</h1>
       <p className="mt-3 text-base text-neutral-500">
-        $100 a month buys the roster. Approving is a judgement call — an
-        approved brand can see every creator&apos;s audience numbers.
+        Nobody is charged yet. Opening the roster to a brand lets them see every
+        creator&apos;s audience numbers, so it stays a judgement call — do it
+        for brands worth having in front of the roster, not everyone on the
+        list.
       </p>
 
       <h2 className="mt-10 text-base font-medium uppercase tracking-wide text-neutral-400">
-        Applications
+        On the interest list
       </h2>
       <div className="mt-4 flex flex-col gap-4">
         {pending.length === 0 && (
           <p className="rounded-xl border border-neutral-200 px-5 py-4 text-base text-neutral-500 dark:border-neutral-800">
-            Nothing waiting.
+            Nobody on the list yet.
           </p>
         )}
         {pending.map((a) => (
@@ -72,11 +81,26 @@ export default async function BrandsPage() {
               {a.contactName} · {a.email}
               {a.website ? ` · ${a.website}` : ""}
             </p>
+
+            {/* The demand signal. This is the reason the list exists. */}
+            {a.lookingFor && (
+              <p className="mt-3 text-base leading-snug text-neutral-700 dark:text-neutral-300">
+                <span className="font-medium">Looking for: </span>
+                {a.lookingFor}
+              </p>
+            )}
+            {(a.budgetRange || a.timing) && (
+              <p className="mt-1 text-sm text-neutral-500">
+                {a.budgetRange ? `Budget ${a.budgetRange}` : ""}
+                {a.budgetRange && a.timing ? " · " : ""}
+                {a.timing ? `Timing ${a.timing}` : ""}
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <form action={approveMembership}>
                 <input type="hidden" name="accountId" value={a.id} />
                 <button type="submit" className={arch("primary", "md")}>
-                  Approve
+                  Open the roster
                 </button>
               </form>
               <form action={declineMembership} className="flex flex-wrap items-center gap-2">

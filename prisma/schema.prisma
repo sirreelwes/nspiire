@@ -321,6 +321,17 @@ model BrandAccount {
   brandId String?
   brand   Brand?  @relation(fields: [brandId], references: [id])
 
+  /// What they are actually looking for. This is the point of the interest
+  /// list while the roster is small: it says which creators to go and recruit,
+  /// which is a much stronger position than recruiting and hoping demand turns
+  /// up. Free text on purpose — a dropdown would decide the taxonomy before
+  /// there is enough data to know it.
+  lookingFor  String?
+  budgetRange String?
+  timing      String?
+
+  /// Dormant. Everyone joins an interest list today and nobody is charged;
+  /// switching membership on later is a copy change plus Stripe, not a rebuild.
   membership   MembershipStatus @default(PENDING)
   appliedAt    DateTime         @default(now())
   decidedAt    DateTime?

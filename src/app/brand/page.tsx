@@ -51,11 +51,11 @@ export default async function BrandHomePage() {
       ) : account.membership === "DECLINED" ? (
         <>
           <h1 className="text-3xl font-semibold tracking-tight">
-            We couldn&apos;t take this one on
+            Not a fit right now
           </h1>
           <p className="mt-3 text-base leading-snug text-neutral-500">
             {account.decisionNote ||
-              "Your application wasn't approved. If you think that's wrong, reply to the email you applied with."}
+              "We're not able to take this on at the moment. Reply to the email you signed up with if you think that's wrong."}
           </p>
         </>
       ) : account.membership === "CANCELLED" ? (
@@ -72,29 +72,46 @@ export default async function BrandHomePage() {
         <>
           <IrisGreeting>
             <p>
-              Hi {account.contactName.split(" ")[0]}, your application is with
-              us.{" "}
+              Hi {account.contactName.split(" ")[0]}, you&apos;re on the list.{" "}
               <span className="text-neutral-500">
-                Someone reviews every one by hand — you&apos;ll hear back at{" "}
-                {account.email}.
+                I&apos;ll come to you at {account.email} when I have a creator
+                who fits what you described.
               </span>
             </p>
           </IrisGreeting>
-          <dl className="mt-10 grid grid-cols-2 gap-4 text-base">
+          <dl className="mt-10 grid gap-4 text-base sm:grid-cols-2">
             <div>
               <dt className="text-sm text-neutral-500">Company</dt>
               <dd className="mt-1 font-medium">{account.companyName}</dd>
             </div>
             <div>
-              <dt className="text-sm text-neutral-500">Applied</dt>
+              <dt className="text-sm text-neutral-500">Joined</dt>
               <dd className="mt-1 font-medium">
                 {account.appliedAt.toISOString().slice(0, 10)}
               </dd>
             </div>
+            {account.lookingFor && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm text-neutral-500">Looking for</dt>
+                <dd className="mt-1">{account.lookingFor}</dd>
+              </div>
+            )}
+            {account.budgetRange && (
+              <div>
+                <dt className="text-sm text-neutral-500">Budget</dt>
+                <dd className="mt-1 font-medium">{account.budgetRange}</dd>
+              </div>
+            )}
+            {account.timing && (
+              <div>
+                <dt className="text-sm text-neutral-500">Timing</dt>
+                <dd className="mt-1 font-medium">{account.timing}</dd>
+              </div>
+            )}
           </dl>
           <p className="mt-8 text-base leading-snug text-neutral-500">
-            Membership is $100 a month once you&apos;re approved. You will not
-            be charged while an application is pending.
+            There&apos;s nothing to pay, and nothing to do. If that ever
+            changes we&apos;ll tell you first.
           </p>
         </>
       )}

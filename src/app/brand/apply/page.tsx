@@ -12,10 +12,16 @@ const MESSAGES: Record<string, string> = {
   missing: "Company and contact name are both needed.",
   email: "Enter a valid work email.",
   short: "Use at least 12 characters.",
-  exists: "There's already an account with that email — sign in instead.",
+  exists: "You're already on the list with that email — sign in instead.",
 };
 
-/** Brands apply for themselves. An operator decides whether they get in. */
+/**
+ * The interest list, not a checkout.
+ *
+ * The pricing copy is gone on purpose. What earns its place instead is what
+ * the brand is looking for: while the roster is small that answer is the most
+ * valuable thing on the page, because it says which creators to go and recruit.
+ */
 export default async function BrandApplyPage(
   props: PageProps<"/brand/apply">,
 ) {
@@ -28,12 +34,12 @@ export default async function BrandApplyPage(
       </Link>
 
       <h1 className="mt-8 text-3xl font-semibold tracking-tight sm:text-4xl">
-        Apply for the roster
+        Tell us who you&apos;re looking for
       </h1>
       <p className="mt-3 text-base leading-snug text-neutral-500">
-        $100 a month for access to Nspiire&apos;s creators. Applications are
-        reviewed by hand — you can create an account now and we&apos;ll come
-        back to you.
+        Nspiire represents creators and handles their deals end to end. Join the
+        interest list and we&apos;ll come to you when we have someone who fits —
+        or sooner, if you tell us what you need.
       </p>
 
       {typeof error === "string" && MESSAGES[error] && (
@@ -60,6 +66,27 @@ export default async function BrandApplyPage(
           <input name="website" placeholder="https://" className={field} />
         </label>
         <label className="flex flex-col gap-2">
+          <span className="text-base font-medium">Who are you looking for?</span>
+          <textarea
+            name="lookingFor"
+            rows={3}
+            placeholder="Wine and food creators in the US, ideally people who actually cook or taste on camera."
+            className={field}
+          />
+        </label>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-2">
+            <span className="text-base font-medium">Budget per campaign</span>
+            <input name="budgetRange" placeholder="$2k–$10k" className={field} />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-base font-medium">When</span>
+            <input name="timing" placeholder="Q1, or ongoing" className={field} />
+          </label>
+        </div>
+
+        <label className="flex flex-col gap-2">
           <span className="text-base font-medium">Password</span>
           <input
             name="password"
@@ -72,12 +99,15 @@ export default async function BrandApplyPage(
           <span className="text-sm text-neutral-500">At least 12 characters.</span>
         </label>
         <button type="submit" className={arch("primary", "md", "mt-2 w-full")}>
-          Apply
+          Join the interest list
         </button>
       </form>
 
       <p className="mt-8 text-sm text-neutral-500">
-        Already applied?{" "}
+        There&apos;s nothing to pay. We&apos;ll tell you if that ever changes.
+      </p>
+      <p className="mt-3 text-sm text-neutral-500">
+        Already on the list?{" "}
         <Link href="/brand/login" className="underline underline-offset-4">
           Sign in
         </Link>

@@ -79,6 +79,10 @@ export default function Home() {
       </section>
 
       <footer className="mt-20 w-full border-t border-neutral-200 pt-8 text-base text-neutral-500 dark:border-neutral-800">
+        <Link href="/brand/apply" className="underline underline-offset-4">
+          For brands
+        </Link>
+        <span className="px-2">·</span>
         <Link href="/terms" className="underline underline-offset-4">
           Terms
         </Link>

@@ -8,11 +8,15 @@ import { hashPassword, verifyPassword } from "@/lib/auth/creator";
 import { BRAND_COOKIE, issueBrandSession, requireActiveBrand } from "@/lib/auth/brand";
 
 /**
- * Brand sign-up, sign-in, and expressing interest in a creator.
+ * Brands joining the interest list, signing in, and asking for a creator.
  *
- * Brands self-serve here, unlike creators — they APPLY, and an operator decides.
- * That is why the sign-up form creates an account outright rather than needing
- * an invite: the gate is membership, not registration.
+ * Nobody is charged and nobody is a member yet. Charging for a three-creator
+ * roster is the one move that is hard to undo — a brand's first impression is
+ * expensive to redo, and "marketplace" followed by three creators in three
+ * niches reads as vapour. So brands join a list, and membership stays dormant
+ * in the schema until the roster is worth paying for.
+ *
+ * The signal to switch it on: brands asking for creators we do not have.
  */
 
 const MIN_PASSWORD = 12;
@@ -38,6 +42,9 @@ export async function brandApply(form: FormData): Promise<void> {
   const contactName = text(form, "contactName");
   const email = text(form, "email").toLowerCase();
   const website = text(form, "website");
+  const lookingFor = text(form, "lookingFor").slice(0, 500);
+  const budgetRange = text(form, "budgetRange").slice(0, 100);
+  const timing = text(form, "timing").slice(0, 100);
   const password = form.get("password");
 
   if (!companyName || !contactName) redirect("/brand/apply?error=missing");
@@ -58,7 +65,10 @@ export async function brandApply(form: FormData): Promise<void> {
       contactName,
       website: website || null,
       passwordHash: hashPassword(password),
-      // PENDING by default. Applying is not joining.
+      lookingFor: lookingFor || null,
+      budgetRange: budgetRange || null,
+      timing: timing || null,
+      // PENDING by default — on the list, not a member.
     },
   });
 
