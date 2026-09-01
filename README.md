@@ -89,9 +89,30 @@ creator gets pitched to brands that only book 5M creators, every pitch is
 ignored, and the shortlist looks busy while producing nothing. Scout is told
 this explicitly and the two lists reach it separately, never merged.
 
-Deliberately **not** used for pricing. The terms advisor prices from closed
-deals and the creator's own rate card, never from a name typed into a form:
-"creators like me charge $8K" is exactly the confident, unsourced figure
+### Stated now, measured when we can
+
+The split is really a size comparison, so `effectiveKind()` computes it from a
+measured follower count wherever one exists and only falls back to the
+creator's answer when nothing has been looked up — the same precedence a synced
+metric has over a hand-entered one. Measurement corrects them in both
+directions: a 5M creator they filed under "about my size" stops sizing brands,
+and a same-size creator they were modest about starts.
+
+Nothing populates that number yet, and what it takes differs by platform:
+
+| | Lookup by handle |
+| --- | --- |
+| **YouTube** | `channels.list(part=statistics)` — any public channel, free, quota'd. The easy one. |
+| **Instagram** | Graph `business_discovery` — professional accounts only, needs our own linked account and app review. Meta's surface moves; verify before building. |
+| **TikTok** | None. `/v2/user/info/` reads the token holder's own profile, the Research API is researchers-only, and Creator Marketplace needs a partner agreement. |
+| **Vendors** | Modash, HypeAuditor, Upfluence — all three platforms with engagement attached, for money. |
+
+Not an option: asking a model how big someone is. That is a confident
+unsourced number deciding who gets pitched to whom.
+
+Deliberately **not** used for pricing either. The terms advisor prices from
+closed deals and the creator's own rate card, never from a name typed into a
+form: "creators like me charge $8K" is exactly the figure
 `lib/deals/advisor.ts` exists to refuse.
 
 Asked, not required — a good question is not a reason to block a signup. The

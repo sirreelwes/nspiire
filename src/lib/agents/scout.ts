@@ -101,6 +101,12 @@ export async function runScout(
     };
   }
 
+  // Their biggest account, which is what a comparable is measured against.
+  const ownFollowers = input.creator.platforms.reduce(
+    (max, p) => Math.max(max, p.followerCount ?? p.metrics.followerCount ?? 0),
+    0,
+  );
+
   const user = JSON.stringify({
     creator: {
       niche: input.creator.niche,
@@ -119,10 +125,14 @@ export async function runScout(
       })),
     },
     // Split, never merged: mixing these is how a 40K creator ends up pitched
-    // to brands that only book 5M creators. See lib/creators/comparables.ts.
+    // to brands that only book 5M creators. The split prefers a measured
+    // follower count over the creator's own answer where one exists — see
+    // effectiveKind() in lib/creators/comparables.ts.
     comparables: {
-      peers: peers(input.creator.comparables ?? []).map(describeComparable),
-      aspirational: aspirational(input.creator.comparables ?? []).map(
+      peers: peers(input.creator.comparables ?? [], ownFollowers).map(
+        describeComparable,
+      ),
+      aspirational: aspirational(input.creator.comparables ?? [], ownFollowers).map(
         describeComparable,
       ),
     },

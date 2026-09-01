@@ -12,6 +12,7 @@ import {
   COMPARABLES_ASKED_FOR,
   COMPARABLE_KINDS,
   COMPARABLE_KIND_LABELS,
+  sizeAnchor,
   type ComparableKind,
 } from "@/lib/creators/comparables";
 
@@ -86,6 +87,14 @@ export function OnboardingForm() {
       rows.map((r, j) => (j === i ? { ...r, ...patch } : r)),
     );
   }
+
+  // Their biggest account, from what they have typed so far. This is the
+  // anchor for the size question below — the comparison is much easier to
+  // answer against a real number than in the abstract.
+  const ownFollowers = socials.reduce((max, s) => {
+    const n = Number(s.followers.replace(/[^0-9]/g, ""));
+    return Number.isFinite(n) && n > max ? n : max;
+  }, 0);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -334,10 +343,13 @@ export function OnboardingForm() {
         </Section>
 
         <Section title="Creators like you">
-          <p className="-mt-2 mb-4 text-sm text-neutral-500">
-            Name three. Scout hunts brands that already sponsor creators like
-            you — a sponsorship one of your peers has run is a real lead, at a
-            level a brand has shown it will pay for.
+          <p className="-mt-2 text-sm text-neutral-500">
+            Name three. Scout hunts brands that already sponsor creators your
+            size — a sponsorship one of them has run is a real lead, at a level
+            a brand has shown it will pay for.
+          </p>
+          <p className="mb-4 mt-1 text-xs text-neutral-500">
+            {sizeAnchor(ownFollowers || null)}
           </p>
           <div className="flex flex-col gap-5">
             {comparables.map((c, i) => (
@@ -389,10 +401,11 @@ export function OnboardingForm() {
               + Add another
             </button>
             <p className={hint}>
-              Be honest about which is which. &ldquo;Where I&apos;m
-              heading&rdquo; tells your agent about taste and direction, and is
-              deliberately ignored when sizing brands — naming someone ten times
-              your size won&apos;t get you pitched as though you were them.
+              Only &ldquo;about my size&rdquo; is used to size brands. Someone
+              bigger still tells your agent about taste and direction — it just
+              won&apos;t get you pitched as though you were them. We can&apos;t
+              look up their numbers, so this is the one part we have to take
+              your word for.
             </p>
           </div>
         </Section>

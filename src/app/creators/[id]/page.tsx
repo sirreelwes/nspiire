@@ -16,6 +16,7 @@ import {
   COMPARABLE_KINDS,
   COMPARABLE_KIND_LABELS,
   parseComparables,
+  sizeAnchor,
   type Comparable,
 } from "@/lib/creators/comparables";
 import { STATE_LABELS } from "@/lib/deals/labels";
@@ -293,7 +294,11 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
         </Section>
 
         <Section title="Creators like them">
-          <Comparables creatorId={creator.id} comparables={comparables} />
+          <Comparables
+            creatorId={creator.id}
+            comparables={comparables}
+            followerCount={metrics.followerCount}
+          />
         </Section>
 
         <Section title="Their agent">
@@ -645,9 +650,11 @@ function TextField({
 function Comparables({
   creatorId,
   comparables,
+  followerCount,
 }: {
   creatorId: string;
   comparables: Comparable[];
+  followerCount: number | null;
 }) {
   // Always show the number we ask for, so an empty account is an invitation
   // rather than a blank panel.
@@ -664,9 +671,10 @@ function Comparables({
       <input type="hidden" name="creatorId" value={creatorId} />
       <p className="-mt-2 text-sm text-neutral-500">
         Who else makes what they make? Scout hunts brands that already sponsor
-        their peers — a sponsorship one of them has run is a real lead, at a
-        tier a brand has shown it will pay for.
+        creators their size — a sponsorship one of them has run is a real lead,
+        at a tier a brand has shown it will pay for.
       </p>
+      <p className={hint}>{sizeAnchor(followerCount)}</p>
 
       {rows.map((c, i) => (
         <div key={i} className="grid gap-3 sm:grid-cols-[1fr_auto]">
@@ -703,10 +711,9 @@ function Comparables({
       ))}
 
       <p className={hint}>
-        &ldquo;About where I am&rdquo; is what Scout sizes brands against.
-        &ldquo;Where I&apos;m heading&rdquo; tells it about taste and direction
-        only — naming someone ten times their size never gets them pitched as
-        though they were. Clear a handle to remove it.
+        Only &ldquo;about my size&rdquo; is used to size brands. Someone bigger
+        still tells Scout about taste and direction — it just never gets them
+        pitched as though they were that big. Clear a handle to remove it.
       </p>
       <button type="submit" className={`${primaryBtn} self-start`}>
         Save
