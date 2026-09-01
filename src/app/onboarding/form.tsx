@@ -8,9 +8,24 @@ import {
   SUGGESTED_FORMATS,
   type Platform,
 } from "@/lib/creators/onboarding";
+import {
+  COMPARABLES_ASKED_FOR,
+  COMPARABLE_KINDS,
+  COMPARABLE_KIND_LABELS,
+  type ComparableKind,
+} from "@/lib/creators/comparables";
 
 type SocialRow = { platform: Platform; handle: string; followers: string };
 type RateRow = { format: string; rate: string; floor: string };
+type ComparableRow = { handle: string; kind: ComparableKind; note: string };
+
+/** The three empty rows the form opens on. Three is the ask, not a limit. */
+const emptyComparables = (): ComparableRow[] =>
+  Array.from({ length: COMPARABLES_ASKED_FOR }, () => ({
+    handle: "",
+    kind: "peer" as ComparableKind,
+    note: "",
+  }));
 
 const field =
   "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-base " +
@@ -48,6 +63,8 @@ export function OnboardingForm() {
   const [rates, setRates] = useState<RateRow[]>([
     { format: SUGGESTED_FORMATS[0], rate: "", floor: "" },
   ]);
+  const [comparables, setComparables] =
+    useState<ComparableRow[]>(emptyComparables());
   const [maxUsageDays, setMaxUsageDays] = useState("30");
   const [maxExclusivityDays, setMaxExclusivityDays] = useState("0");
   const [doNotWorkWith, setDoNotWorkWith] = useState("");
@@ -63,6 +80,11 @@ export function OnboardingForm() {
   }
   function patchRate(i: number, patch: Partial<RateRow>) {
     setRates((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  }
+  function patchComparable(i: number, patch: Partial<ComparableRow>) {
+    setComparables((rows) =>
+      rows.map((r, j) => (j === i ? { ...r, ...patch } : r)),
+    );
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -90,6 +112,9 @@ export function OnboardingForm() {
             rateCents: toCents(r.rate) ?? 0,
             floorCents: toCents(r.floor),
           })),
+        comparables: comparables
+          .filter((c) => c.handle.trim())
+          .map((c) => ({ handle: c.handle, kind: c.kind, note: c.note })),
         maxUsageDays: Number(maxUsageDays || 0),
         maxExclusivityDays: Number(maxExclusivityDays || 0),
         doNotWorkWith: toLines(doNotWorkWith),
@@ -132,7 +157,13 @@ export function OnboardingForm() {
           >
             Go to dashboard
           </Link>
-          <button className={ghostBtn} onClick={() => setSavedName(null)}>
+          <button
+            className={ghostBtn}
+            onClick={() => {
+              setComparables(emptyComparables());
+              setSavedName(null);
+            }}
+          >
             Add another creator
           </button>
         </div>
@@ -299,6 +330,70 @@ export function OnboardingForm() {
             >
               + Add format
             </button>
+          </div>
+        </Section>
+
+        <Section title="Creators like you">
+          <p className="-mt-2 mb-4 text-sm text-neutral-500">
+            Name three. Scout hunts brands that already sponsor creators like
+            you — a sponsorship one of your peers has run is a real lead, at a
+            level a brand has shown it will pay for.
+          </p>
+          <div className="flex flex-col gap-5">
+            {comparables.map((c, i) => (
+              <div key={i} className="flex flex-col gap-3">
+                <div className="grid gap-3 sm:grid-cols-[1fr_13rem]">
+                  <input
+                    className={field}
+                    placeholder="@handle or name"
+                    value={c.handle}
+                    onChange={(e) => patchComparable(i, { handle: e.target.value })}
+                    aria-label={`Creator ${i + 1}`}
+                  />
+                  <select
+                    className={field}
+                    value={c.kind}
+                    onChange={(e) =>
+                      patchComparable(i, {
+                        kind: e.target.value as ComparableKind,
+                      })
+                    }
+                    aria-label={`How creator ${i + 1} compares to you`}
+                  >
+                    {COMPARABLE_KINDS.map((k) => (
+                      <option key={k} value={k}>
+                        {COMPARABLE_KIND_LABELS[k]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <input
+                  className={field}
+                  placeholder="Why them — same audience, same format, same gear"
+                  value={c.note}
+                  onChange={(e) => patchComparable(i, { note: e.target.value })}
+                  aria-label={`Why creator ${i + 1}`}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              className={`${ghostBtn} self-start`}
+              onClick={() =>
+                setComparables((rows) => [
+                  ...rows,
+                  { handle: "", kind: "peer", note: "" },
+                ])
+              }
+            >
+              + Add another
+            </button>
+            <p className={hint}>
+              Be honest about which is which. &ldquo;Where I&apos;m
+              heading&rdquo; tells your agent about taste and direction, and is
+              deliberately ignored when sizing brands — naming someone ten times
+              your size won&apos;t get you pitched as though you were them.
+            </p>
           </div>
         </Section>
 

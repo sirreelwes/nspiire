@@ -23,8 +23,12 @@ model Creator {
   guardrails    Json     @default("{}")
   // Rate card per deliverable type
   rateCard      Json     @default("{}")
-  // Voice/style samples for Pitch agent
+  // Voice/style samples for the persona layer
   voiceProfile  Json     @default("{}")
+  // Creators they name as comparable — peers and aspirational, kept apart.
+  // Scout's strongest lead signal. Shape: ComparablesSchema in
+  // lib/creators/comparables.ts. Never used to price a deal.
+  comparables   Json     @default("[]")
   // Approval policy: which gates require human sign-off (default: all)
   approvalPolicy Json    @default("{}")
   // Whether they take physical product at all, whether a brand must ask first,

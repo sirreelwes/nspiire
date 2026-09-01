@@ -4,6 +4,12 @@ import type { AgentResult } from "./types";
 import type { Guardrails } from "./types";
 import type { AudienceMetrics } from "@/lib/creators/metrics";
 import { formatCount, formatRate } from "@/lib/creators/metrics";
+import {
+  aspirational,
+  describeComparable,
+  peers,
+  type Comparable,
+} from "@/lib/creators/comparables";
 import { MIN_DEAL_CENTS } from "@/lib/deals/policy";
 import { formatMoney, lookupByFormat } from "@/lib/deals/terms";
 
@@ -50,6 +56,8 @@ export interface ScoutInput {
     guardrails: Guardrails;
     /** The Creator.rateCard column — `{ [format]: cents }`. */
     rateCard: Record<string, number>;
+    /** Creators they named as comparable. Peers and aspirational stay apart. */
+    comparables?: Comparable[];
   };
   /** Brands already in the pipeline, so Scout doesn't re-suggest them. */
   existingBrands?: string[];
@@ -62,6 +70,9 @@ Given a creator's real audience numbers and their guardrails, propose brands tha
 
 Rules:
 - The do-not-work-with list is absolute. Never propose a brand on it, or one whose category is on it.
+- "peers" are creators at roughly this creator's level. They are your best lead source: a brand that sponsors one of them is a brand that already pays for an audience this size. If you know of a sponsorship a peer has actually run, that belongs in "evidence" — it is exactly the checkable kind.
+- "aspirational" are creators this one wants to become. They tell you about taste and direction and NOTHING about tier. Never size a brand off an aspirational name. A brand that only books creators at that level is a bad fit today, and proposing it burns the creator's time on a pitch that will be ignored.
+- Neither list is a shortlist of brands. Do not assume a brand sponsors this creator's peers just because it is big in the niche — if you are not reasonably confident, say so in "evidence".
 - Only suggest formats that appear in the creator's offered formats. Those have already been filtered to the ones worth pursuing — do not suggest any other.
 - Every brand you propose must plausibly have the budget for the rate shown against the format you suggest. A brand that only ever does product-gifting is not a lead.
 - Do not invent contact names or email addresses. "evidence" must be something a human could go and check — a named creator-sponsorship the brand has run, an affiliate or ambassador programme, a category norm — not a guess dressed up as a fact.
@@ -106,6 +117,14 @@ export async function runScout(
         engagementRateByFollowers: p.metrics.engagementRateByFollowers,
         metricsSource: p.metrics.source,
       })),
+    },
+    // Split, never merged: mixing these is how a 40K creator ends up pitched
+    // to brands that only book 5M creators. See lib/creators/comparables.ts.
+    comparables: {
+      peers: peers(input.creator.comparables ?? []).map(describeComparable),
+      aspirational: aspirational(input.creator.comparables ?? []).map(
+        describeComparable,
+      ),
     },
     guardrails: {
       doNotWorkWith: input.creator.guardrails.doNotWorkWith,

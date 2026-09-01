@@ -9,6 +9,7 @@ import { parseMetrics, AudienceMetricsSchema } from "@/lib/creators/metrics";
 import { proposeTerms } from "@/lib/deals/advisor";
 import { followerBand } from "@/lib/deals/stateMachine";
 import { DealTermsSchema } from "@/lib/deals/terms";
+import { ComparablesSchema, parseComparables } from "@/lib/creators/comparables";
 import { z } from "zod";
 import {
   ADDRESS_RELEASE_STATES,
@@ -110,6 +111,7 @@ export async function findBrandPartners(form: FormData) {
       // Scout needs the prices, not just the format names: it won't hunt for
       // formats under the house sourcing floor (lib/deals/policy.ts).
       rateCard: (creator.rateCard ?? {}) as Record<string, number>,
+      comparables: parseComparables(creator.comparables),
     },
     existingBrands: creator.opportunities.map((o) => o.brand.name),
   });
@@ -485,6 +487,48 @@ export async function setCreatorPersona(form: FormData) {
     });
   } catch {
     withError(base, "Could not assign that agent.");
+  }
+
+  revalidatePath(base);
+  redirect(base);
+}
+
+/**
+ * Save the creators they name as comparable.
+ *
+ * The form posts a fixed set of rows; blank handles are dropped rather than
+ * validated, so clearing a row is how you delete one. An unrecognised `kind`
+ * falls back to "peer" — the schema default and the conservative one, since
+ * peers are the list Scout sizes brands against.
+ */
+export async function saveComparables(form: FormData) {
+  const creatorId = text(form, "creatorId");
+  const base = `/creators/${creatorId}`;
+  if (!creatorId) withError("/creators", "Missing creator.");
+
+  const rows: { handle: string; kind: string; note: string }[] = [];
+  for (let i = 0; i < 12; i++) {
+    const handle = text(form, `handle${i}`);
+    if (!handle) continue;
+    rows.push({
+      handle,
+      kind: text(form, `kind${i}`) || "peer",
+      note: text(form, `note${i}`),
+    });
+  }
+
+  const parsed = ComparablesSchema.safeParse(rows);
+  if (!parsed.success) {
+    withError(base, parsed.error.issues[0]?.message ?? "Check those names.");
+  }
+
+  try {
+    await prisma.creator.update({
+      where: { id: creatorId },
+      data: { comparables: parsed.data },
+    });
+  } catch {
+    withError(base, "Could not save those creators.");
   }
 
   revalidatePath(base);

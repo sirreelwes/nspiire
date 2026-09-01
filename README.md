@@ -25,6 +25,8 @@ src/lib/deals/policy.ts         house rules: $250 sourcing floor, 30-day
                                 standard usage window
 src/lib/creators/shipping.ts    where brand product may be sent, and how far a
                                 deal must get before the address is released
+src/lib/creators/comparables.ts creators they name as comparable — peers and
+                                aspirational, deliberately kept apart
 src/lib/agents/             the virtual agent roster
   types.ts                  guardrails, approval policy, shared contracts
   claude.ts                 Claude client helper
@@ -66,6 +68,34 @@ these apply to everyone:
   `maxUsageDays` guardrail — the opening ask sits exactly at the ceiling a
   creator is assumed to accept without being asked. The fee schedule prices its
   surcharges off it.
+
+## Creators like you
+
+Onboarding asks every creator to name three creators like them. It is the
+cheapest high-value question in the flow: "which brands sponsor people like me"
+is a far better lead than niche and follower count, because a sponsorship a
+comparable creator has actually run is a checkable fact at a tier some brand
+has already shown it will pay for.
+
+Two kinds, and the difference is the whole point:
+
+| | What it tells Scout |
+| --- | --- |
+| **About where I am** (peer) | Real signal about tier. Brands that sponsor them are leads worth the creator's time. |
+| **Where I'm heading** (aspirational) | Taste and direction. **Never** tier. |
+
+Collapsing them would be actively harmful — a 40K creator who names a 5M
+creator gets pitched to brands that only book 5M creators, every pitch is
+ignored, and the shortlist looks busy while producing nothing. Scout is told
+this explicitly and the two lists reach it separately, never merged.
+
+Deliberately **not** used for pricing. The terms advisor prices from closed
+deals and the creator's own rate card, never from a name typed into a form:
+"creators like me charge $8K" is exactly the confident, unsourced figure
+`lib/deals/advisor.ts` exists to refuse.
+
+Asked, not required — a good question is not a reason to block a signup. The
+creator page shows the three rows for anyone who skipped it.
 
 ## Virtual agents
 

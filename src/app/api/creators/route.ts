@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     );
   }
   const input = parsed.data;
-  const { rateCard, guardrails, voiceProfile, approvalPolicy } =
+  const { rateCard, guardrails, comparables, voiceProfile, approvalPolicy } =
     toCreatorRecord(input);
 
   try {
@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         niche: input.niche,
         rateCard,
         guardrails,
+        comparables,
         voiceProfile,
         approvalPolicy,
         socials: {

@@ -4,6 +4,7 @@ import {
   GuardrailsSchema,
   type ApprovalPolicy,
 } from "@/lib/agents/types";
+import { ComparablesSchema } from "@/lib/creators/comparables";
 
 /**
  * Creator onboarding — blueprint milestone 1.
@@ -76,6 +77,9 @@ export const CreatorOnboardingSchema = z.object({
   niche: z.string().trim().min(1, "Niche is required"),
   socials: z.array(SocialInput).min(1, "Add at least one social account"),
   rates: z.array(RateInput).min(1, "Add at least one rate"),
+  // Optional on purpose: this is a good question, not a reason to block a
+  // signup. The creator page nudges anyone who skipped it.
+  comparables: ComparablesSchema,
   maxUsageDays: z.number().int().min(0).max(3650),
   maxExclusivityDays: z.number().int().min(0).max(3650),
   doNotWorkWith: z.array(z.string().trim().min(1)).default([]),
@@ -111,6 +115,7 @@ export function toCreatorRecord(input: CreatorOnboarding) {
   return {
     rateCard,
     guardrails,
+    comparables: input.comparables,
     voiceProfile: { notes: input.voiceNotes, samples: input.voiceSamples },
     approvalPolicy: defaultApprovalPolicy(),
   };

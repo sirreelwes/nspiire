@@ -11,6 +11,13 @@ import {
   type Destination,
   type GiftingPolicy,
 } from "@/lib/creators/shipping";
+import {
+  COMPARABLES_ASKED_FOR,
+  COMPARABLE_KINDS,
+  COMPARABLE_KIND_LABELS,
+  parseComparables,
+  type Comparable,
+} from "@/lib/creators/comparables";
 import { STATE_LABELS } from "@/lib/deals/labels";
 import { formatMoney } from "@/lib/deals/terms";
 import {
@@ -29,6 +36,7 @@ import {
   archiveShippingDestination,
   findBrandPartners,
   rejectOpportunity,
+  saveComparables,
   saveGiftingPolicy,
   saveManualMetrics,
   saveShippingDestination,
@@ -72,6 +80,7 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
   });
   const guardrails = parseGuardrails(creator.guardrails);
   const gifting = parseGiftingPolicy(creator.giftingPolicy);
+  const comparables = parseComparables(creator.comparables);
   const destinations = creator.shippingDestinations;
   const activeDestinations = destinations.filter((d) => d.archivedAt == null);
   const primary = creator.socials[0];
@@ -281,6 +290,10 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
               .map(([f, c]) => `${f} ${formatMoney(c)}`)
               .join(" · ") || "none set"}
           </p>
+        </Section>
+
+        <Section title="Creators like them">
+          <Comparables creatorId={creator.id} comparables={comparables} />
         </Section>
 
         <Section title="Their agent">
@@ -619,6 +632,86 @@ function TextField({
         autoComplete="off"
       />
     </div>
+  );
+}
+
+/**
+ * The named comparables, editable in place.
+ *
+ * Rendered as one form of fixed rows rather than an add/remove list: three is
+ * the ask, the list is short, and clearing a handle is a delete anyone can
+ * work out without a button for it.
+ */
+function Comparables({
+  creatorId,
+  comparables,
+}: {
+  creatorId: string;
+  comparables: Comparable[];
+}) {
+  // Always show the number we ask for, so an empty account is an invitation
+  // rather than a blank panel.
+  const rows = [
+    ...comparables,
+    ...Array.from(
+      { length: Math.max(0, COMPARABLES_ASKED_FOR - comparables.length) },
+      () => ({ handle: "", kind: "peer" as const, note: "" }),
+    ),
+  ];
+
+  return (
+    <form action={saveComparables} className="flex flex-col gap-4">
+      <input type="hidden" name="creatorId" value={creatorId} />
+      <p className="-mt-2 text-sm text-neutral-500">
+        Who else makes what they make? Scout hunts brands that already sponsor
+        their peers — a sponsorship one of them has run is a real lead, at a
+        tier a brand has shown it will pay for.
+      </p>
+
+      {rows.map((c, i) => (
+        <div key={i} className="grid gap-3 sm:grid-cols-[1fr_auto]">
+          <div className="flex flex-col gap-3">
+            <input
+              name={`handle${i}`}
+              className={field}
+              defaultValue={c.handle}
+              placeholder="@handle or name"
+              autoComplete="off"
+              aria-label={`Comparable creator ${i + 1}`}
+            />
+            <input
+              name={`note${i}`}
+              className={field}
+              defaultValue={c.note}
+              placeholder="Why them — same audience, same format, same gear"
+              aria-label={`Why creator ${i + 1}`}
+            />
+          </div>
+          <select
+            name={`kind${i}`}
+            className={`${field} sm:w-52`}
+            defaultValue={c.kind}
+            aria-label={`How creator ${i + 1} compares`}
+          >
+            {COMPARABLE_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {COMPARABLE_KIND_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
+
+      <p className={hint}>
+        &ldquo;About where I am&rdquo; is what Scout sizes brands against.
+        &ldquo;Where I&apos;m heading&rdquo; tells it about taste and direction
+        only — naming someone ten times their size never gets them pitched as
+        though they were. Clear a handle to remove it.
+      </p>
+      <button type="submit" className={`${primaryBtn} self-start`}>
+        Save
+      </button>
+    </form>
   );
 }
 
