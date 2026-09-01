@@ -106,3 +106,35 @@
 .markOnly .n {
   width: 0.775em;
 }
+
+/*
+ * Fluid mode — the wordmark spans its container.
+ *
+ * The lockup's box is exactly 5.8711em wide: 0.3em padding-left, 5.2711em of
+ * ink, and the 0.3em letter-space trailing the final E. Dividing the container
+ * width by that puts the ink dead centre with a 0.3em gutter each side, which
+ * is why this is arithmetic rather than a guessed vw value.
+ *
+ * Container units, not vw: 100vw includes the scrollbar on desktop, which
+ * would push the wordmark a few pixels off-centre and overflow on narrow
+ * windows. Capped so it stops growing on large screens.
+ */
+.fluidWrap {
+  /* Must be block: it is a <span>, and `width` does not apply to inline
+     elements — left inline it sizes to its own content, so 100cqw measures the
+     wordmark rather than the space available and the lockup overflows. */
+  display: block;
+  container-type: inline-size;
+  width: 100%;
+}
+
+.fluid {
+  /* inline-block, not the span's default inline: padding-top on an inline box
+     paints but reserves no line-box height, so the reservation below would be
+     fiction and the arc would bleed into whatever sits above. */
+  display: inline-block;
+  font-size: min(calc(100cqw / 5.8711), 108px);
+  /* The arc clears .mark's top by 0.2225em (it sits at bottom 0.9075em and is
+     0.315em tall, against a 1em line box), so this reserves room for it. */
+  padding-top: 0.34em;
+}

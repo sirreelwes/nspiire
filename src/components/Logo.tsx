@@ -12,23 +12,25 @@ import styles from "./Logo.module.css";
  * handle thins to under a pixel and the diagonal's gaps close up.
  */
 interface LogoProps {
-  /** Font size the lockup is built from, in px. */
+  /** Font size the lockup is built from, in px. Ignored when `fluid`. */
   size?: number;
+  /** Span the container instead of a fixed size. See .fluid in the stylesheet. */
+  fluid?: boolean;
   className?: string;
 }
 
-function cx(...parts: (string | undefined)[]) {
+function cx(...parts: (string | false | undefined)[]) {
   return parts.filter(Boolean).join(" ");
 }
 
 /** The full wordmark: NSPIIRE with the handle over the II. */
-export function Logo({ size = 26, className }: LogoProps) {
-  return (
+export function Logo({ size = 26, fluid, className }: LogoProps) {
+  const word = (
     <span
       role="img"
       aria-label="Nspiire"
-      className={cx(styles.word, className)}
-      style={{ fontSize: `${size}px` }}
+      className={cx(styles.word, fluid && styles.fluid, className)}
+      style={fluid ? undefined : { fontSize: `${size}px` }}
     >
       <span className={styles.n}>N</span>
       SP
@@ -39,6 +41,7 @@ export function Logo({ size = 26, className }: LogoProps) {
       RE
     </span>
   );
+  return fluid ? <span className={styles.fluidWrap}>{word}</span> : word;
 }
 
 /**
