@@ -47,8 +47,15 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next's own assets and the favicon. Gating by exclusion
-  // so a new route is private by default — the opposite mistake (a new page
-  // added to an allowlist-by-omission) is the one that leaks a roster.
-  matcher: ["/((?!_next/static|_next/image|icon.svg|favicon.ico).*)"],
+  // Everything except Next's own assets, the favicon and the link-preview
+  // images. Gating by exclusion so a new route is private by default — the
+  // opposite mistake (a new page added to an allowlist-by-omission) is the one
+  // that leaks a roster.
+  //
+  // opengraph-image/twitter-image have to be public or link previews break:
+  // Slack, iMessage and X fetch them with no cookies, and a redirect to /login
+  // is not an image. They are the wordmark on a white ground and leak nothing.
+  matcher: [
+    "/((?!_next/static|_next/image|icon.svg|favicon.ico|opengraph-image.png|twitter-image.png).*)",
+  ],
 };
