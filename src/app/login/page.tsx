@@ -39,6 +39,31 @@ export default async function LoginPage(props: PageProps<"/login">) {
 
       <form action={signIn} className="mt-8 flex flex-col gap-4">
         <input type="hidden" name="next" value={target} />
+
+        {/*
+          A password-only form gives a password manager nothing to key on, so
+          it either refuses to save or saves under a blank username. There is
+          exactly one operator, so the username is fixed and read-only — it
+          exists to be autofilled and stored, not chosen. autoComplete
+          "username" is what pairs it with the password field below.
+        */}
+        <label className="flex flex-col gap-2">
+          <span className="text-base font-medium">Username</span>
+          <input
+            name="username"
+            type="text"
+            autoComplete="username"
+            value="operator"
+            readOnly
+            tabIndex={-1}
+            aria-describedby="username-hint"
+            className="rounded-xl border border-neutral-300 bg-neutral-50 px-4 py-3.5 text-base text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900"
+          />
+          <span id="username-hint" className="text-sm text-neutral-500">
+            There is one operator account. Save this with your password.
+          </span>
+        </label>
+
         <label className="flex flex-col gap-2">
           <span className="text-base font-medium">Password</span>
           <input
