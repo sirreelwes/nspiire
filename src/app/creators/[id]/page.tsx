@@ -132,7 +132,11 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
                   <input type="hidden" name="creatorId" value={creator.id} />
                   <input type="hidden" name="accountId" value={primary.id} />
                   <div className="grid gap-4 sm:grid-cols-3">
-                    <Field name="followerCount" label="Followers" defaultValue={metrics.followerCount} />
+                    {/* Falls back to the column: an account synced before metrics existed,
+                        or one onboarded by hand, has followerCount set and metrics empty.
+                        Prefilling from metrics alone renders this blank, and saving a
+                        blank field writes null straight over the real number. */}
+                    <Field name="followerCount" label="Followers" defaultValue={metrics.followerCount ?? primary.followerCount} />
                     <Field name="avgViews" label="Avg views / post" defaultValue={metrics.avgViews} />
                     <Field name="sampleSize" label="Posts averaged" defaultValue={metrics.sampleSize} />
                     <Field name="avgLikes" label="Avg likes" defaultValue={metrics.avgLikes} />
