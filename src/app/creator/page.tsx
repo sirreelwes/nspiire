@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
+import { IrisGreeting } from "@/components/Iris";
 import { prisma } from "@/lib/prisma";
 import { requireCreator } from "@/lib/auth/creator";
-import { parseMetrics, formatCount, formatRate } from "@/lib/creators/metrics";
 import {
   formatDays,
   formatMoney,
@@ -60,7 +60,6 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
   ]);
 
   const primary = socials[0];
-  const metrics = parseMetrics(primary?.metrics);
 
   // An invite carries only a name and an email, so a new account has no niche,
   // no handle and no rate card — nothing Scout or the advisor can run on.
@@ -90,34 +89,18 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
         />
       ) : (
         <>
-      <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-        {creator.name}
-      </h1>
-      {primary && (
-        <p className="mt-2 text-lg text-neutral-500">
-          @{primary.handle} · {formatCount(primary.followerCount)} followers
+      {/* The handshake. Iris opens, by name, with the one thing she is for.
+          The creator's own numbers deliberately do NOT live here — this page is
+          "which of these look interesting", and a wall of stats above it makes
+          it a report instead of a conversation. They live in the console with
+          the other stats. */}
+      <IrisGreeting>
+        <p>
+          Hi {creator.name.split(" ")[0]}, take a look at some deals I&apos;ve
+          scouted.{" "}
+          <span className="text-neutral-500">Which ones look interesting?</span>
         </p>
-      )}
-
-      <section className="mt-10">
-        <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
-          Your numbers
-        </h2>
-        <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Avg views" value={formatCount(metrics.avgViews)} />
-          <Stat label="Avg likes" value={formatCount(metrics.avgLikes)} />
-          <Stat
-            label="Engagement / views"
-            value={formatRate(metrics.engagementRateByViews)}
-          />
-          <Stat label="Posts sampled" value={String(metrics.sampleSize)} />
-        </dl>
-        <p className="mt-4 text-sm text-neutral-500">
-          {metrics.source === "tiktok-api"
-            ? "Synced from TikTok."
-            : "Entered by hand — not synced from TikTok yet."}
-        </p>
-      </section>
+      </IrisGreeting>
 
       <section className="mt-12">
         <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
@@ -126,7 +109,7 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
         <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
           {deals.length === 0 ? (
             <p className="px-5 py-4 text-base text-neutral-500">
-              Nothing yet. Your agent is looking for brand partners.
+              Nothing signed yet. Approve one below and I&apos;ll get it moving.
             </p>
           ) : (
             <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -205,17 +188,17 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
 
       <section className="mt-12">
         <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
-          Waiting on you
+          Brands I found for you
         </h2>
         <p className="mt-2 text-base text-neutral-500">
-          Your agent found these. Nothing is written or sent until you ask for
-          it, and you read every word first.
+          Nothing is written or sent until you ask for it, and you read every
+          word before it goes.
         </p>
 
         <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
           {opportunities.length === 0 ? (
             <p className="px-5 py-4 text-base text-neutral-500">
-              Nothing to review right now.
+              Nothing new right now — I&apos;ll keep looking.
             </p>
           ) : (
             <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -244,8 +227,7 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
                   {o.status === "QUALIFIED" ? (
                     <>
                       <p className="mt-4 text-base font-medium text-[var(--logo-accent)]">
-                        You approved this message — your manager sends it from
-                        here.
+                        Approved — I&apos;ll take it from here.
                       </p>
                       {o.draftBody && (
                         <details className="mt-3">
@@ -287,8 +269,8 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
                         />
                       </label>
                       <p className="mt-2 text-sm text-neutral-500">
-                        Edit anything you don&apos;t like. Nothing is sent
-                        automatically — your manager sends it once you approve.
+                        Change anything you don&apos;t like — I&apos;ll send
+                        exactly what you approve, nothing else.
                       </p>
                       <div className="mt-4 flex flex-wrap gap-3">
                         <button type="submit" className={arch("primary", "md")}>
@@ -333,11 +315,4 @@ function Term({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-sm text-neutral-500">{label}</dt>
-      <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
-    </div>
-  );
-}
+

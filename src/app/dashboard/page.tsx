@@ -1,6 +1,7 @@
 import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { arch } from "@/components/Button";
+import { formatCount, formatRate, parseMetrics } from "@/lib/creators/metrics";
 import { ConsoleNav } from "@/components/ConsoleNav";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { DEAL_FLOW, type DealState } from "@/lib/deals/stateMachine";
@@ -27,7 +28,7 @@ const ONBOARD_BUTTON = arch("primary", "md");
 async function load() {
   if (!hasDatabase) return { ready: false as const };
   try {
-    const [grouped, creatorCount, recent] = await Promise.all([
+    const [grouped, creatorCount, recent, creators] = await Promise.all([
       prisma.deal.groupBy({ by: ["state"], _count: { _all: true } }),
       prisma.creator.count(),
       prisma.deal.findMany({
@@ -35,10 +36,17 @@ async function load() {
         take: 8,
         include: { brand: true, creator: true },
       }),
+      // Audience numbers live here now rather than on the creator's own page:
+      // that page is a handshake, and a wall of stats above the shortlist made
+      // it a report instead of a conversation.
+      prisma.creator.findMany({
+        orderBy: { name: "asc" },
+        include: { socials: true },
+      }),
     ]);
     const counts: Counts = {};
     for (const g of grouped) counts[g.state as DealState] = g._count._all;
-    return { ready: true as const, counts, creatorCount, recent };
+    return { ready: true as const, counts, creatorCount, recent, creators };
   } catch {
     // Schema not migrated yet, or the database is unreachable. Say so rather
     // than 500 — this page is the first thing you open during setup.
@@ -113,6 +121,71 @@ export default async function DashboardPage() {
           <code className="font-mono">transition()</code> and logged — that log
           is what the terms advisor learns from.
         </p>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
+          Creator audiences
+        </h2>
+        <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-800">
+          {data.ready && data.creators.length > 0 ? (
+            <table className="w-full min-w-[34rem] text-base">
+              <thead>
+                <tr className="border-b border-neutral-200 text-left text-sm text-neutral-500 dark:border-neutral-800">
+                  <th className="px-5 py-3 font-medium">Creator</th>
+                  <th className="px-5 py-3 font-medium">Followers</th>
+                  <th className="px-5 py-3 font-medium">Avg views</th>
+                  <th className="px-5 py-3 font-medium">Eng / views</th>
+                  <th className="px-5 py-3 font-medium">Source</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                {data.creators.map((c) => {
+                  const s = c.socials[0];
+                  const m = parseMetrics(s?.metrics);
+                  return (
+                    <tr key={c.id}>
+                      <td className="px-5 py-4">
+                        <Link
+                          href={`/creators/${c.id}`}
+                          className="font-medium underline underline-offset-4"
+                        >
+                          {c.name}
+                        </Link>
+                        {s && (
+                          <span className="block text-sm text-neutral-500">
+                            @{s.handle}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 tabular-nums">
+                        {formatCount(s?.followerCount ?? null)}
+                      </td>
+                      <td className="px-5 py-4 tabular-nums">
+                        {formatCount(m.avgViews)}
+                      </td>
+                      <td className="px-5 py-4 tabular-nums">
+                        {formatRate(m.engagementRateByViews)}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-neutral-500">
+                        {/* Never let a hand-entered figure look synced. */}
+                        {m.sampleSize === 0
+                          ? "—"
+                          : m.source === "tiktok-api"
+                            ? "TikTok"
+                            : "By hand"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <p className="px-5 py-4 text-base text-neutral-500">
+              No creators yet.
+            </p>
+          )}
+        </div>
       </section>
 
       <section className="mt-12 grid gap-8 lg:grid-cols-2">
