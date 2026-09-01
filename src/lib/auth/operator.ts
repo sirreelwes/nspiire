@@ -35,6 +35,37 @@ export function operatorGateConfigured(): boolean {
 }
 
 /**
+ * Who may sign in as an operator, by email.
+ *
+ * NSPIIRE_OPERATOR_EMAILS is a comma-separated allowlist. Until it is set, the
+ * legacy literal username `operator` is accepted so nothing breaks mid-change;
+ * once it IS set, only those addresses work and the literal stops.
+ *
+ * Be clear about what this is and is not: the password is still ONE shared
+ * secret, so the email is identity, not a second factor. Two people on the
+ * allowlist share the same password and are indistinguishable to the system
+ * beyond the address they typed. Real per-operator auth needs per-operator
+ * password hashes, which is a table, not an env var.
+ */
+export function operatorEmails(): string[] {
+  const raw = process.env.NSPIIRE_OPERATOR_EMAILS;
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** True when this identifier may sign in — an allowlisted email, or the legacy
+ *  literal while no allowlist is configured. */
+export function operatorIdentityAllowed(identifier: string): boolean {
+  const allowed = operatorEmails();
+  const given = identifier.trim().toLowerCase();
+  if (allowed.length === 0) return given === "operator";
+  return allowed.includes(given);
+}
+
+/**
  * The signing key. NSPIIRE_SESSION_SECRET if set, otherwise the password
  * itself — which means changing the password invalidates every issued cookie.
  * That is the only revocation mechanism there is, and it is why the cookie

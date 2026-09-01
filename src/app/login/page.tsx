@@ -48,20 +48,22 @@ export default async function LoginPage(props: PageProps<"/login">) {
           "username" is what pairs it with the password field below.
         */}
         <label className="flex flex-col gap-2">
-          <span className="text-base font-medium">Username</span>
+          <span className="text-base font-medium">Email</span>
+          {/* type="text", not "email": until NSPIIRE_OPERATOR_EMAILS is set the
+              only accepted identity is the legacy literal `operator`, and an
+              email input's own validation would refuse to submit it — locking
+              the operator out during the window between this deploying and the
+              allowlist being configured. inputMode keeps the phone keyboard
+              right. */}
           <input
-            name="username"
+            name="email"
             type="text"
+            inputMode="email"
             autoComplete="username"
-            value="operator"
-            readOnly
-            tabIndex={-1}
-            aria-describedby="username-hint"
-            className="rounded-xl border border-neutral-300 bg-neutral-50 px-4 py-3.5 text-base text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900"
+            required
+            autoFocus
+            className="rounded-xl border border-neutral-300 px-4 py-3.5 text-base dark:border-neutral-700 dark:bg-neutral-900"
           />
-          <span id="username-hint" className="text-sm text-neutral-500">
-            There is one operator account. Save this with your password.
-          </span>
         </label>
 
         <label className="flex flex-col gap-2">
@@ -70,7 +72,6 @@ export default async function LoginPage(props: PageProps<"/login">) {
             name="password"
             type="password"
             autoComplete="current-password"
-            autoFocus
             required
             disabled={!configured}
             className="rounded-xl border border-neutral-300 px-4 py-3.5 text-base disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900"

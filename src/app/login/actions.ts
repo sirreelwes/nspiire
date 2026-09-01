@@ -6,6 +6,7 @@ import {
   SESSION_COOKIE,
   issueSessionValue,
   operatorGateConfigured,
+  operatorIdentityAllowed,
   passwordMatches,
 } from "@/lib/auth/operator";
 
@@ -29,7 +30,14 @@ export async function signIn(formData: FormData): Promise<void> {
     redirect("/login?error=unconfigured");
   }
 
-  if (typeof attempt !== "string" || !passwordMatches(attempt)) {
+  // Identity and secret are checked together, and the failure is the same
+  // message either way — saying "no such operator" would confirm which
+  // addresses are on the allowlist.
+  const identity = formData.get("email");
+  const identityOk =
+    typeof identity === "string" && operatorIdentityAllowed(identity);
+
+  if (typeof attempt !== "string" || !passwordMatches(attempt) || !identityOk) {
     redirect(`/login?error=denied&next=${encodeURIComponent(target)}`);
   }
 
