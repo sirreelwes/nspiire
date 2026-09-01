@@ -61,6 +61,8 @@ export interface ScoutInput {
   };
   /** Brands already in the pipeline, so Scout doesn't re-suggest them. */
   existingBrands?: string[];
+  /** Brands that asked not to be contacted. Filtered out like the pipeline. */
+  optedOutBrands?: string[];
   count?: number;
 }
 
@@ -169,7 +171,9 @@ export async function runScout(
     .map((b) => b.trim().toLowerCase())
     .filter(Boolean);
   const seen = new Set(
-    (input.existingBrands ?? []).map((b) => b.trim().toLowerCase()),
+    [...(input.existingBrands ?? []), ...(input.optedOutBrands ?? [])].map((b) =>
+      b.trim().toLowerCase(),
+    ),
   );
 
   const pursuableKeys = new Set(pursuable.map((f) => f.trim().toLowerCase()));

@@ -27,6 +27,10 @@ src/lib/creators/shipping.ts    where brand product may be sent, and how far a
                                 deal must get before the address is released
 src/lib/creators/comparables.ts creators they name as comparable — peers and
                                 aspirational, deliberately kept apart
+src/lib/deals/brandAccess.ts    the brand's capability URL, and the single
+                                definition of what it grants
+src/lib/email/                  outbound email (Resend) + the CAN-SPAM wrapper
+src/app/b/[token]/              the brand deal room — public, no login
 src/lib/agents/             the virtual agent roster
   types.ts                  guardrails, approval policy, shared contracts
   claude.ts                 Claude client helper
@@ -46,7 +50,8 @@ src/lib/agents/             the virtual agent roster
 - The deal fee is charged to the **brand**, on top of the creator's rate — never netted out of it. A creator who agreed $5,000 is paid $5,000.
 - A creator's shipping address never goes into a model prompt, and is never released to a brand before the deal state the creator chose.
 - A virtual agent never claims to be human, and never gets a brand-facing brief containing the creator's floor rate, guardrails or address.
-- Nothing a virtual agent writes to a brand sends itself. Every brand-facing draft comes back gated.
+- Nothing a virtual agent writes to a brand sends itself. Every brand-facing draft comes back gated, and a human presses send.
+- A brand that opts out is never contacted again — enforced in the send path and in Scout, not just recorded.
 - Every deal state change goes through `transition()` and is logged — that log trains the deal-terms advisor.
 - Negotiator can never auto-accept terms outside guardrails; `gateOutsideGuardrails` and `gateMoney` cannot be disabled.
 - Contracts never send without human sign-off.
@@ -160,6 +165,48 @@ so a dodge is visible rather than buried.
 
 The two threads are separate rows (`Interaction.audience`) and are never
 replayed into each other — the creator's thread is full of floor-rate talk.
+
+## How a brand hears from us
+
+Email carries the first touch; the deal room carries the deal.
+
+Cold outreach has to be a real email — a brand manager who has never heard of
+Nspiire lives in their inbox, and a bare "click here to talk to our AI" from an
+unknown domain reads as phishing. But the negotiation does not belong in email,
+where terms are prose someone has to re-read and every reply is a threading
+problem. So Iris's email stands on its own and carries a link, and everything
+after that happens at `/b/<token>`.
+
+That token is the whole authorisation. A brand cannot have an Nspiire login —
+the operator password is the entire agency console and must never go near one —
+so `lib/deals/brandAccess.ts` mints 32 bytes of CSPRNG per deal and that URL is
+the brand's way in. Consequences, all handled rather than hoped for:
+
+- **Scoped to one deal.** No listing, no other creator, no other brand.
+- **`brandView()` builds the page field by field.** No `Deal` row reaches a
+  template, so a column added later cannot surface there by accident. The
+  floor rate, guardrails, fee arithmetic, shipping address and `terms.notes`
+  (which carries the advisor's reasoning) are all absent by construction.
+- **Only sent messages appear.** A draft a human hasn't approved does not exist
+  to that page.
+- **`no-referrer` and `noindex`**, so a path that is a password doesn't travel.
+- **The brand's typed reply is untrusted text that reaches a model.** The
+  defence is the same structural one: the brand-facing brief has no field for
+  anything worth extracting, so an instruction buried in a reply has nothing to
+  reveal.
+
+The email wrapper (`lib/email/templates.ts`) is not decoration. Every commercial
+message carries a physical postal address (CAN-SPAM — `footer()` throws rather
+than ship a placeholder), a working opt-out, and a line saying what Iris is. The
+opt-out sets `Brand.optedOutAt`, which the send path refuses on and Scout
+filters — an opt-out that only gets recorded is worse than none.
+
+Sending is env-gated like everything else: with no `RESEND_API_KEY` the console
+says so and drafting still works. Send from a **subdomain** — cold outreach
+reputation must never touch the domain that sends invoices and login mail.
+
+Still manual: inbound email parsing. A brand who replies by email rather than
+clicking through gets pasted in by an operator for now.
 
 ## Where product goes
 

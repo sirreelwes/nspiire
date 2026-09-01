@@ -28,6 +28,8 @@ import {
 } from "@/app/deals/actions";
 import { AgentPanel } from "@/app/deals/agent-ui";
 import { resolvePersona } from "@/lib/agents/persona";
+import { brandPortalUrl } from "@/lib/deals/brandAccess";
+import { hasEmail } from "@/lib/email/client";
 import {
   Crumb,
   ErrorBanner,
@@ -51,7 +53,7 @@ async function load(id: string) {
     const deal = await prisma.deal.findUnique({
       where: { id },
       include: {
-        brand: true,
+        brand: { include: { contacts: { take: 1 } } },
         creator: {
           include: {
             shippingDestinations: { orderBy: { createdAt: "asc" } },
@@ -159,6 +161,10 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
             brandName={deal.brand.name}
             creatorThread={creatorThread}
             brandThread={brandThread}
+            portalUrl={deal.brandToken ? brandPortalUrl(deal.brandToken) : null}
+            emailReady={hasEmail()}
+            optedOut={deal.brand.optedOutAt != null}
+            hasContactEmail={Boolean(deal.brand.contacts[0]?.email)}
           />
         </Section>
 

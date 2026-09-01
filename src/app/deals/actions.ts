@@ -20,6 +20,13 @@ import {
   type ThreadMessage,
 } from "@/lib/agents/conversation";
 import { defaultApprovalPolicy } from "@/lib/creators/onboarding";
+import {
+  brandPortalUrl,
+  mintBrandToken,
+  optOutUrl,
+} from "@/lib/deals/brandAccess";
+import { fromHeader, hasEmail, sendEmail } from "@/lib/email/client";
+import { notificationEmail, outreachEmail } from "@/lib/email/templates";
 
 /**
  * Deal pipeline mutations.
@@ -541,6 +548,135 @@ export async function setDealPersona(form: FormData) {
   } catch {
     withError(base, "Could not assign that agent.");
   }
+
+  revalidatePath(base);
+  redirect(base);
+}
+
+/**
+ * Send one of Iris's drafts to the brand.
+ *
+ * This is the button that makes everything else real, so it is the one place
+ * that re-checks rather than trusts:
+ *
+ *   - the row belongs to THIS deal, is brand-facing and outbound
+ *   - it has not already been sent (a double-click must not email twice)
+ *   - the brand has not opted out
+ *   - there is somewhere to send it
+ *
+ * The first send mints the deal's brand token, so a portal link only exists
+ * once someone has decided to contact them.
+ */
+export async function sendBrandMessage(form: FormData) {
+  const dealId = text(form, "dealId");
+  if (!dealId) withError("/deals", "Missing deal.");
+  const base = `/deals/${dealId}`;
+  const interactionId = text(form, "interactionId");
+  if (!interactionId) withError(base, "Missing message.");
+
+  if (!hasEmail()) {
+    withError(
+      base,
+      "Email isn't configured on this environment. Set RESEND_API_KEY and NSPIIRE_MAIL_FROM.",
+    );
+  }
+
+  const loaded = await loadDealForPersona(dealId);
+  if (!loaded) withError(base, "No such deal.");
+  const { deal, persona } = loaded;
+  if (!persona) withError(base, "No virtual agent on this deal.");
+
+  if (deal.brand.optedOutAt) {
+    withError(
+      base,
+      `${deal.brand.name} asked not to be contacted. That stands until they say otherwise.`,
+    );
+  }
+
+  const draft = await prisma.interaction.findFirst({
+    where: {
+      id: interactionId,
+      dealId,
+      audience: "brand",
+      direction: "outbound",
+      sentAt: null,
+    },
+  });
+  if (!draft) {
+    withError(base, "That draft is already sent, or isn't one to send.");
+  }
+
+  const to = deal.brand.contacts[0]?.email;
+  if (!to) {
+    withError(
+      base,
+      `No email on file for ${deal.brand.name}. Add a contact before sending.`,
+    );
+  }
+
+  // Minted on first send: an unused deal should not have a live public URL.
+  const token = deal.brandToken ?? mintBrandToken();
+
+  // Prior sent messages decide whether this is outreach or a nudge back to the
+  // room, and give us the thread to reply into.
+  const previous = await prisma.interaction.findMany({
+    where: { dealId, audience: "brand", direction: "outbound", sentAt: { not: null } },
+    orderBy: { createdAt: "asc" },
+    select: { providerMessageId: true },
+  });
+  const priorIds = previous
+    .map((p) => p.providerMessageId)
+    .filter((id): id is string => Boolean(id));
+
+  const ctx = {
+    body: draft.body ?? "",
+    personaName: persona.name,
+    creatorName: deal.creator.name,
+    brandName: deal.brand.name,
+    portalUrl: brandPortalUrl(token),
+    optOutUrl: optOutUrl(token),
+  };
+
+  let sent;
+  try {
+    sent = await sendEmail({
+      from: fromHeader(persona.name, deal.creator.name),
+      to,
+      subject: draft.subject || `${deal.creator.name} × ${deal.brand.name}`,
+      text:
+        priorIds.length === 0
+          ? outreachEmail(ctx)
+          : notificationEmail({ ...ctx, preview: draft.body ?? "" }),
+      replyTo: process.env.NSPIIRE_MAIL_REPLY_TO || undefined,
+      inReplyTo: priorIds.at(-1),
+      references: priorIds,
+    });
+  } catch (err) {
+    withError(
+      base,
+      err instanceof Error ? err.message : "The email provider refused it.",
+    );
+  }
+
+  await prisma.$transaction([
+    prisma.deal.update({ where: { id: dealId }, data: { brandToken: token } }),
+    prisma.interaction.update({
+      where: { id: draft.id },
+      data: {
+        toEmail: to,
+        sentAt: new Date(),
+        providerMessageId: sent.providerMessageId,
+        deliveryStatus: "sent",
+        approval: {
+          ...(draft.approval && typeof draft.approval === "object"
+            ? (draft.approval as Record<string, unknown>)
+            : {}),
+          status: "approved",
+          approvedBy: ACTOR,
+        },
+      },
+    }),
+  ]);
 
   revalidatePath(base);
   redirect(base);

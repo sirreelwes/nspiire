@@ -18,6 +18,10 @@ import type { NextRequest } from "next/server";
  *   /api/tiktok/callback   TikTok redirects the user here after consent, so it
  *                          cannot require a session. It is protected instead by
  *                          the CSRF state cookie it already checks.
+ *   /b/<token>     the brand's deal room. A brand has no Nspiire account and
+ *                  must never have the operator password, so the unguessable
+ *                  token IS the authorisation — see lib/deals/brandAccess.ts.
+ *                  Prefix-matched rather than listed, because the token varies.
  */
 
 const PUBLIC_PATHS = new Set([
@@ -32,6 +36,7 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
+  if (pathname === "/b" || pathname.startsWith("/b/")) return NextResponse.next();
   if (request.cookies.has("nspiire_op")) return NextResponse.next();
 
   // An API client should get a status code, not a login page. Redirecting

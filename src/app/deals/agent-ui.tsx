@@ -1,4 +1,10 @@
-import { askIris, draftBrandOutreach, logBrandReply, setDealPersona } from "@/app/deals/actions";
+import {
+  askIris,
+  draftBrandOutreach,
+  logBrandReply,
+  sendBrandMessage,
+  setDealPersona,
+} from "@/app/deals/actions";
 import { field, ghostBtn, hint, label, primaryBtn } from "@/app/deals/ui";
 
 /**
@@ -26,6 +32,9 @@ export interface InteractionRow {
   body: string | null;
   approval: unknown;
   createdAt: Date;
+  sentAt: Date | null;
+  toEmail: string | null;
+  deliveryStatus: string | null;
 }
 
 /** Her structured read, stored alongside the message she sent with it. */
@@ -57,6 +66,10 @@ export function AgentPanel({
   brandName,
   creatorThread,
   brandThread,
+  portalUrl,
+  emailReady,
+  optedOut,
+  hasContactEmail,
 }: {
   dealId: string;
   persona: PersonaRow | null;
@@ -67,6 +80,11 @@ export function AgentPanel({
   brandName: string;
   creatorThread: InteractionRow[];
   brandThread: InteractionRow[];
+  /** Null until the first send mints the token. */
+  portalUrl: string | null;
+  emailReady: boolean;
+  optedOut: boolean;
+  hasContactEmail: boolean;
 }) {
   if (!persona) {
     return (
@@ -96,6 +114,10 @@ export function AgentPanel({
         persona={persona}
         brandName={brandName}
         thread={brandThread}
+        portalUrl={portalUrl}
+        emailReady={emailReady}
+        optedOut={optedOut}
+        hasContactEmail={hasContactEmail}
       />
     </div>
   );
@@ -273,11 +295,19 @@ function BrandThread({
   persona,
   brandName,
   thread,
+  portalUrl,
+  emailReady,
+  optedOut,
+  hasContactEmail,
 }: {
   dealId: string;
   persona: PersonaRow;
   brandName: string;
   thread: InteractionRow[];
+  portalUrl: string | null;
+  emailReady: boolean;
+  optedOut: boolean;
+  hasContactEmail: boolean;
 }) {
   return (
     <div>
@@ -285,8 +315,26 @@ function BrandThread({
         {persona.name} and {brandName}
       </h3>
       <p className={`${hint} mt-1`}>
-        She drafts; you send. Nothing here has reached {brandName}.
+        She drafts; you send. The first send emails {brandName} and opens their
+        deal room — the conversation continues there.
       </p>
+      {optedOut && (
+        <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">
+          {brandName} asked not to be contacted. Sending is off for good unless
+          they say otherwise.
+        </p>
+      )}
+      {!emailReady && !optedOut && (
+        <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">
+          Email isn&apos;t configured here — set RESEND_API_KEY,
+          NSPIIRE_MAIL_FROM and NSPIIRE_POSTAL_ADDRESS. Drafting still works.
+        </p>
+      )}
+      {portalUrl && (
+        <p className="mt-2 break-all text-xs text-neutral-500">
+          Their deal room: <span className="font-mono">{portalUrl}</span>
+        </p>
+      )}
 
       {thread.length > 0 && (
         <ol className="mt-4 flex flex-col gap-3">
@@ -319,10 +367,41 @@ function BrandThread({
                     She didn&apos;t answer: {read.withheld?.join("; ")}
                   </p>
                 )}
-                {outbound && (
-                  <p className="mt-2 text-xs text-neutral-500">
-                    Not sent — {read.reason || "waiting on you"}
+                {outbound && m.sentAt && (
+                  <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-500">
+                    Sent to {m.toEmail} ·{" "}
+                    {new Intl.DateTimeFormat("en-GB", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                      timeZone: "UTC",
+                    }).format(m.sentAt)}{" "}
+                    UTC
+                    {m.deliveryStatus && m.deliveryStatus !== "sent"
+                      ? ` · ${m.deliveryStatus}`
+                      : ""}
                   </p>
+                )}
+                {outbound && !m.sentAt && (
+                  <>
+                    <p className="mt-2 text-xs text-neutral-500">
+                      Not sent — {read.reason || "waiting on you"}
+                    </p>
+                    {!optedOut && (
+                      <form action={sendBrandMessage} className="mt-3">
+                        <input type="hidden" name="dealId" value={dealId} />
+                        <input type="hidden" name="interactionId" value={m.id} />
+                        <button
+                          type="submit"
+                          className={primaryBtn}
+                          disabled={!emailReady || !hasContactEmail}
+                        >
+                          {hasContactEmail
+                            ? `Send to ${brandName}`
+                            : "No contact email on file"}
+                        </button>
+                      </form>
+                    )}
+                  </>
                 )}
               </li>
             );

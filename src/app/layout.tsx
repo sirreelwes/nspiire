@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Jost } from "next/font/google";
+import { siteUrl } from "@/lib/deals/brandAccess";
 import "./globals.css";
 
 /** The logo is set in Jost; self-hosted by next/font so there is no external
@@ -16,10 +17,10 @@ const TAGLINE = "Your AI agent. Fire your manager, keep the 20%.";
 /**
  * Absolute base for the link-preview tags. Slack, iMessage and X fetch og:image
  * over the network from a cold start, so a relative path is no use to them and
- * Next needs a base to make them absolute. Override per environment; the
- * fallback is the production domain TIKTOK_REDIRECT_URI already points at.
+ * Next needs a base to make them absolute. Shared with the brand portal's link
+ * builder, which needs the same origin for the same reason.
  */
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nspiire.vercel.app";
+const SITE_URL = siteUrl();
 
 /**
  * og:image and twitter:image are generated from opengraph-image.png and

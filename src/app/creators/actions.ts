@@ -114,6 +114,15 @@ export async function findBrandPartners(form: FormData) {
       comparables: parseComparables(creator.comparables),
     },
     existingBrands: creator.opportunities.map((o) => o.brand.name),
+    // Brands that have opted out are as good as blocked: re-sourcing one puts
+    // it back in front of a human who might approve outreach they already
+    // refused. Cheaper to never suggest it.
+    optedOutBrands: (
+      await prisma.brand.findMany({
+        where: { optedOutAt: { not: null } },
+        select: { name: true },
+      })
+    ).map((b) => b.name),
   });
 
   if (result.escalation) withError(base, result.escalation.reason);

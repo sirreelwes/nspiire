@@ -158,6 +158,11 @@ model Brand {
   deals         Deal[]
   // Per-brand relationship memory: tone, history, preferences
   relationshipNotes Json @default("{}")
+  // They asked not to be contacted. Set from the opt-out link every commercial
+  // email carries; enforced in the send path, not just recorded. An opt-out
+  // mechanism that does nothing is worse than none — CAN-SPAM requires it to
+  // work, and a brand that has to ask twice is a brand that is gone.
+  optedOutAt    DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -226,6 +231,11 @@ model Deal {
   // Who runs this deal. Null falls back to the creator's default persona.
   personaId     String?
   persona       Persona? @relation(fields: [personaId], references: [id])
+  // Unguessable key to this deal's brand portal (/b/<token>), minted when the
+  // first outreach goes out. This is a capability URL: whoever holds it can
+  // read the deal's brand-facing view and post to the thread, with no login.
+  // What that view may contain is decided in lib/deals/brandAccess.ts, not here.
+  brandToken    String?   @unique
   transitions   DealTransition[]
   interactions  Interaction[]
   contracts     Contract[]
@@ -280,6 +290,14 @@ model Interaction {
   audience  String   @default("creator") // creator | brand
   subject   String?
   body      String?
+  // Email delivery, for rows that actually went out over SMTP. Null on every
+  // in-app message — the portal is the other transport and has no envelope.
+  toEmail           String?
+  sentAt            DateTime?
+  providerMessageId String?
+  // queued | sent | delivered | bounced | complained. A bounce is why a brand
+  // never replied, so it has to be visible rather than inferred from silence.
+  deliveryStatus    String?
   // For outbound agent messages: was this gated, and who approved
   approval  Json     @default("{}")
   createdAt DateTime @default(now())
