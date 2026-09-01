@@ -37,8 +37,19 @@ export async function signIn(formData: FormData): Promise<void> {
   const identityOk =
     typeof identity === "string" && operatorIdentityAllowed(identity);
 
-  if (typeof attempt !== "string" || !passwordMatches(attempt) || !identityOk) {
+  const passwordOk = typeof attempt === "string" && passwordMatches(attempt);
+
+  // Order matters. A WRONG password always gives the same generic failure, so
+  // nobody can enumerate operator addresses. Only once the password is
+  // correct — i.e. the caller already holds the secret — is it safe to say
+  // that the address is the part that is wrong. That distinction is the
+  // difference between "check your typing" and "the allowlist is wrong", and
+  // guessing between them costs a deploy each time.
+  if (!passwordOk) {
     redirect(`/login?error=denied&next=${encodeURIComponent(target)}`);
+  }
+  if (!identityOk) {
+    redirect(`/login?error=identity&next=${encodeURIComponent(target)}`);
   }
 
   const { value, maxAge } = issueSessionValue();

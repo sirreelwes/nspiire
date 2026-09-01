@@ -48,6 +48,19 @@ export default async function LoginPage(props: PageProps<"/login">) {
         </div>
       )}
 
+      {error === "identity" && (
+        <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-base text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p>
+            The password is right — that address is not on the operator
+            allowlist.
+          </p>
+          <p className="mt-2 text-sm">
+            Fix NSPIIRE_OPERATOR_EMAILS and redeploy, or sign in with an address
+            that is on it.
+          </p>
+        </div>
+      )}
+
       <form action={signIn} className="mt-8 flex flex-col gap-4">
         <input type="hidden" name="next" value={target} />
 
