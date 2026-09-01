@@ -27,8 +27,8 @@ export default function Home() {
         <Logo fluid />
       </h1>
 
-      <p className="mt-7 max-w-xs text-balance text-xl leading-snug text-neutral-500 sm:max-w-sm sm:text-2xl">
-        Brand deals, found and negotiated for you.
+      <p className="mt-7 text-2xl leading-snug text-neutral-500 sm:text-3xl">
+        This is a big deal.
       </p>
 
       {/* Full-width on a phone so they are thumb targets, not links. */}
