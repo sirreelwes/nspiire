@@ -10,6 +10,7 @@ import {
   termsApprovalIsCurrent,
 } from "@/lib/deals/terms";
 import { STATE_LABELS } from "@/lib/deals/labels";
+import { adviseForOpportunity, windowsFor } from "@/lib/deals/opportunityTerms";
 import type { DealState } from "@/lib/deals/stateMachine";
 import {
   creatorApproveOutreach,
@@ -68,6 +69,26 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
 
   // What Iris opens with is derived from what is actually outstanding, so the
   // greeting cannot cheerfully announce new brands while a deal sits unsigned.
+  // What Iris would ask each brand for. Computed here so the creator sees the
+  // number BEFORE approving outreach — the same figure approveOpportunity
+  // writes onto the deal later, from the same function.
+  const advice = new Map(
+    await Promise.all(
+      opportunities.map(
+        async (o) =>
+          [
+            o.id,
+            await adviseForOpportunity(prisma, {
+              creator,
+              social: primary,
+              format: o.suggestedFormat ?? "",
+            }),
+          ] as const,
+      ),
+    ),
+  );
+  const windows = windowsFor(creator.guardrails);
+
   const greeting = irisGreeting({
     firstName: creator.name.split(" ")[0],
     toReview: opportunities.filter((o) => o.status === "SOURCED" && !o.draftBody).length,
@@ -231,6 +252,55 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
                       {o.evidence}
                     </p>
                   )}
+
+                  {/* What Iris would actually ask for. A creator approving
+                      outreach without seeing the number is approving a
+                      conversation whose terms they have not been told. */}
+                  {(() => {
+                    const a = advice.get(o.id);
+                    if (!a) return null;
+                    return (
+                      <div className="mt-4 rounded-xl border border-neutral-200 px-4 py-4 dark:border-neutral-800">
+                        <p className="text-sm font-medium uppercase tracking-wide text-neutral-400">
+                          What I&apos;d ask them for
+                        </p>
+                        {a.amountCents == null ? (
+                          <p className="mt-2 text-base text-neutral-500">
+                            I don&apos;t have enough to price this yet — add a
+                            rate for {o.suggestedFormat || "this format"} and
+                            I&apos;ll put a number on it.
+                          </p>
+                        ) : (
+                          <>
+                            <p className="mt-1 text-3xl font-semibold tabular-nums">
+                              {formatMoney(a.amountCents)}
+                            </p>
+                            <dl className="mt-3 grid grid-cols-2 gap-3 text-base sm:grid-cols-4">
+                              <Term
+                                label="Range"
+                                value={
+                                  a.lowCents != null && a.highCents != null
+                                    ? `${formatMoney(a.lowCents)}–${formatMoney(a.highCents)}`
+                                    : "—"
+                                }
+                              />
+                              <Term
+                                label="Your floor"
+                                value={a.floorCents != null ? formatMoney(a.floorCents) : "—"}
+                              />
+                              <Term label="They can run it" value={formatDays(windows.usageDays)} />
+                              <Term label="Exclusivity" value={formatDays(windows.exclusivityDays)} />
+                            </dl>
+                            {a.reasoning.length > 0 && (
+                              <p className="mt-3 text-sm leading-snug text-neutral-500">
+                                {a.reasoning.join(" ")}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {o.status === "QUALIFIED" ? (
                     <>

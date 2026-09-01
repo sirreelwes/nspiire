@@ -7,8 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { runScout } from "@/lib/agents/scout";
 import { parseGuardrails } from "@/lib/deals/guardrails";
 import { parseMetrics, AudienceMetricsSchema } from "@/lib/creators/metrics";
-import { proposeTerms } from "@/lib/deals/advisor";
-import { followerBand } from "@/lib/deals/stateMachine";
+import { adviseForOpportunity } from "@/lib/deals/opportunityTerms";
 import { DealTermsSchema } from "@/lib/deals/terms";
 import { newInviteToken } from "@/lib/auth/creator";
 
@@ -194,30 +193,16 @@ export async function approveOpportunity(form: FormData) {
   }
 
   const primary = opp.creator.socials[0];
-  const metrics = parseMetrics(primary?.metrics);
   const format = opp.suggestedFormat ?? "";
-
-  const rateCard = (opp.creator.rateCard ?? {}) as Record<string, number>;
   const guardrails = parseGuardrails(opp.creator.guardrails);
 
-  // Benchmarks are matched the same way writeBenchmark() records them.
-  const benchmarks = primary
-    ? await prisma.termsBenchmark.findMany({
-        where: {
-          niche: opp.creator.niche ?? "unknown",
-          platform: primary.platform,
-          followerBand: followerBand(primary.followerCount ?? 0),
-        },
-        select: { amountCents: true, format: true },
-      })
-    : [];
-
-  const advice = proposeTerms({
+  // The SAME function the creator's page used to show them a number before
+  // they approved outreach. Two independent price calculations is how someone
+  // approves one figure and finds another on the deal.
+  const advice = await adviseForOpportunity(prisma, {
+    creator: opp.creator,
+    social: primary,
     format,
-    rateCard,
-    floorRates: guardrails.floorRatesCents,
-    metrics,
-    benchmarks,
   });
 
   const terms = DealTermsSchema.parse({
