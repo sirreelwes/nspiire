@@ -1,3 +1,4 @@
+import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma, hasDatabase } from "@/lib/prisma";
@@ -25,6 +26,8 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
+  await requireOperator();
+
   const { id } = await props.params;
   const { error, connected } = await props.searchParams;
 

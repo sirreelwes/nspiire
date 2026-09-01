@@ -1,3 +1,4 @@
+import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import type { DealState } from "@/lib/deals/stateMachine";
@@ -35,6 +36,8 @@ async function load(state: DealState | undefined) {
 }
 
 export default async function DealsPage(props: PageProps<"/deals">) {
+  await requireOperator("/deals");
+
   const { state: rawState, error } = await props.searchParams;
   const stateParam = typeof rawState === "string" ? rawState : undefined;
   const state = isDealState(stateParam) ? stateParam : undefined;

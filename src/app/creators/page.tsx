@@ -1,3 +1,4 @@
+import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { parseMetrics, formatCount, formatRate } from "@/lib/creators/metrics";
@@ -6,6 +7,8 @@ import { Crumb, NotConnected, primaryBtn } from "@/app/deals/ui";
 export const dynamic = "force-dynamic";
 
 export default async function CreatorsPage() {
+  await requireOperator("/creators");
+
   const creators = hasDatabase
     ? await prisma.creator.findMany({
         include: { socials: true, _count: { select: { deals: true } } },

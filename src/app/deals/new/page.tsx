@@ -1,3 +1,4 @@
+import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { createDeal } from "@/app/deals/actions";
@@ -37,6 +38,8 @@ async function load() {
 }
 
 export default async function NewDealPage(props: PageProps<"/deals/new">) {
+  await requireOperator("/deals/new");
+
   const { error } = await props.searchParams;
   const data = await load();
 

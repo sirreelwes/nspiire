@@ -1,10 +1,21 @@
 import { syncAccount } from "@/lib/tiktok/sync";
+import { isOperator } from "@/lib/auth/operator";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** The console's API surface is operator-only, same gate as its pages. */
+async function denyIfPublic(): Promise<Response | null> {
+  if (await isOperator()) return null;
+  return Response.json({ error: "unauthorized" }, { status: 401 });
+}
+
+
 /** Re-pull metrics for one connected account. */
 export async function POST(request: Request) {
+  const denied = await denyIfPublic();
+  if (denied) return denied;
+
   let body: { accountId?: string };
   try {
     body = await request.json();

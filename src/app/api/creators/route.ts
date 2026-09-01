@@ -1,3 +1,4 @@
+import { isOperator } from "@/lib/auth/operator";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -9,7 +10,17 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** The console's API surface is operator-only, same gate as its pages. */
+async function denyIfPublic(): Promise<Response | null> {
+  if (await isOperator()) return null;
+  return Response.json({ error: "unauthorized" }, { status: 401 });
+}
+
+
 export async function GET() {
+  const denied = await denyIfPublic();
+  if (denied) return denied;
+
   const creators = await prisma.creator.findMany({
     orderBy: { createdAt: "desc" },
     include: { socials: true },
@@ -19,6 +30,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = await denyIfPublic();
+  if (denied) return denied;
+
   let body: unknown;
   try {
     body = await request.json();

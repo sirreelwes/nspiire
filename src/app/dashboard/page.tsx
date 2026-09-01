@@ -1,3 +1,4 @@
+import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
 import { prisma, hasDatabase } from "@/lib/prisma";
@@ -52,6 +53,8 @@ async function load() {
 }
 
 export default async function DashboardPage() {
+  await requireOperator("/dashboard");
+
   const data = await load();
 
   return (

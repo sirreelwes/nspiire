@@ -1,3 +1,4 @@
+import { requireOperator } from "@/lib/auth/operator";
 import { notFound } from "next/navigation";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { DEAL_FLOW, type DealState } from "@/lib/deals/stateMachine";
@@ -44,6 +45,8 @@ async function load(id: string) {
 }
 
 export default async function DealPage(props: PageProps<"/deals/[id]">) {
+  await requireOperator();
+
   const { id } = await props.params;
   const { error } = await props.searchParams;
   const data = await load(id);
