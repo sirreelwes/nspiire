@@ -27,8 +27,8 @@ export default function Home() {
         <Logo fluid />
       </h1>
 
-      <p className="mt-7 max-w-sm text-xl leading-snug text-neutral-500 sm:text-2xl">
-        Your AI agent. Fire your manager, keep the 20%.
+      <p className="mt-7 max-w-xs text-balance text-xl leading-snug text-neutral-500 sm:max-w-sm sm:text-2xl">
+        Brand deals, found and negotiated for you.
       </p>
 
       {/* Full-width on a phone so they are thumb targets, not links. */}
