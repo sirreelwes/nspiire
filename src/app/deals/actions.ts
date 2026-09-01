@@ -1,5 +1,6 @@
 "use server";
 
+import { requireOperator } from "@/lib/auth/operator";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -66,6 +67,10 @@ const NewDealSchema = z.object({
  * transitions only, which is what the terms advisor learns from.
  */
 export async function createDeal(form: FormData) {
+  // Server actions are POST endpoints in their own right: requireOperator() on
+  // the PAGE does not protect them, and the proxy is an optimistic check by
+  // Next's own account. This is the boundary for writes.
+  await requireOperator();
   const base = "/deals/new";
 
   const parsed = NewDealSchema.safeParse({
@@ -118,6 +123,7 @@ export async function createDeal(form: FormData) {
  * transition snapshots whatever the terms are at that moment.
  */
 export async function updateDealTerms(form: FormData) {
+  await requireOperator();
   const dealId = text(form, "dealId");
   if (!dealId) withError("/deals", "Missing deal.");
   const base = `/deals/${dealId}`;
@@ -146,6 +152,7 @@ export async function updateDealTerms(form: FormData) {
  * of Deal.state and the only thing that appends to DealTransition.
  */
 export async function transitionDeal(form: FormData) {
+  await requireOperator();
   const dealId = text(form, "dealId");
   if (!dealId) withError("/deals", "Missing deal.");
   const base = `/deals/${dealId}`;

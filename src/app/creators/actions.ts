@@ -1,5 +1,6 @@
 "use server";
 
+import { requireOperator } from "@/lib/auth/operator";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +32,10 @@ function withError(path: string, message: string): never {
  * confidence, the UI — can tell it apart from a synced figure.
  */
 export async function saveManualMetrics(form: FormData) {
+  // Server actions are POST endpoints in their own right: requireOperator() on
+  // the PAGE does not protect them, and the proxy is an optimistic check by
+  // Next's own account. This is the boundary for writes.
+  await requireOperator();
   const accountId = text(form, "accountId");
   const creatorId = text(form, "creatorId");
   const base = `/creators/${creatorId}`;
@@ -74,6 +79,7 @@ export async function saveManualMetrics(form: FormData) {
 
 /** Run Scout and store the shortlist as SOURCED opportunities for review. */
 export async function findBrandPartners(form: FormData) {
+  await requireOperator();
   const creatorId = text(form, "creatorId");
   const base = `/creators/${creatorId}`;
 
@@ -141,6 +147,7 @@ export async function findBrandPartners(form: FormData) {
 }
 
 export async function rejectOpportunity(form: FormData) {
+  await requireOperator();
   const id = text(form, "opportunityId");
   const creatorId = text(form, "creatorId");
   await prisma.opportunity.update({ where: { id }, data: { status: "REJECTED" } });
@@ -157,6 +164,7 @@ export async function rejectOpportunity(form: FormData) {
  * deal is born at PITCHED and every move after that is logged.
  */
 export async function approveOpportunity(form: FormData) {
+  await requireOperator();
   const id = text(form, "opportunityId");
   const creatorId = text(form, "creatorId");
   const base = `/creators/${creatorId}`;
@@ -253,6 +261,7 @@ export async function approveOpportunity(form: FormData) {
  * is the revoke button: invite again and the old one stops working.
  */
 export async function inviteCreator(form: FormData) {
+  await requireOperator();
   const creatorId = text(form, "creatorId");
   const base = `/creators/${creatorId}`;
   if (!creatorId) withError("/creators", "Missing creator.");
@@ -288,6 +297,7 @@ export async function inviteCreator(form: FormData) {
  * data. They complete it on first sign-in.
  */
 export async function inviteNewCreator(form: FormData) {
+  await requireOperator();
   const name = text(form, "name");
   const email = text(form, "email").toLowerCase();
   const base = "/creators/invite";
