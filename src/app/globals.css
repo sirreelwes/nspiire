@@ -8,7 +8,7 @@
      carried by the handle and the N's diagonal. Set them equal for
      single-colour use. */
   --logo-ink: var(--foreground);
-  --logo-accent: #8a2226;
+  --logo-accent: #bf5700;
 }
 
 @theme inline {
@@ -22,9 +22,11 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
-    /* The accent has to lift on a dark ground: #8a2226 measures 2.0:1 there,
-       #b23a44 measures 6.2:1. */
-    --logo-accent: #b23a44;
+    /* The accent has to lift on a dark ground. Measured against #0a0a0a:
+       #bf5700 is 4.32:1, #e87500 is 6.58:1 — a tint of the same burnt orange,
+       not a different colour. (The previous note here claimed the old red
+       measured 6.2:1 on dark; it was 3.38:1.) */
+    --logo-accent: #e87500;
   }
 }
 

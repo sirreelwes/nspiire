@@ -12,6 +12,10 @@
  * Two colours: --logo-ink is the letters, --logo-accent is the geometry added
  * to them (the handle and the N's diagonal). Set them equal for single-colour
  * use — embossing, etching, one-ink print.
+ *
+ * The accent is burnt orange #bf5700 (the hex UT Austin publishes for PMS 159).
+ * The fallbacks below are the light-ground value; globals.css lifts it to
+ * #e87500 on a dark ground, where #bf5700 only reaches 4.32:1.
  */
 
 .word {
@@ -48,7 +52,7 @@
      touches the two uprights; that is what lets them read as two separate
      strokes. Depends on line-height: 1. */
   bottom: 0.9075em;
-  border: 0.085em solid var(--logo-accent, #8a2226);
+  border: 0.085em solid var(--logo-accent, #bf5700);
   border-bottom: none;
 }
 
@@ -88,8 +92,8 @@
     var(--logo-ink, #141310) 0.165em,
     transparent 0.165em,
     transparent 0.22em,
-    var(--logo-accent, #8a2226) 0.22em,
-    var(--logo-accent, #8a2226) 0.555em,
+    var(--logo-accent, #bf5700) 0.22em,
+    var(--logo-accent, #bf5700) 0.555em,
     transparent 0.555em,
     transparent 0.61em,
     var(--logo-ink, #141310) 0.61em
