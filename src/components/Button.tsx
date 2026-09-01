@@ -25,18 +25,26 @@ const BASE =
   "inline-flex items-center justify-center rounded-b-none border-2 border-b-0 font-medium";
 
 /*
- * The top radius has to be stated, not left to `9999px`. CSS clamps a corner's
- * vertical radius to the box height only when the opposite corner is 0 — which
- * is exactly our case, bottom corners being square — so `rounded-t-full` curves
- * over the FULL height and domes. Half the height is what makes it read as a
- * pill with its lower half removed, so each size fixes its height and takes
- * exactly half of it.
+ * No straight vertical sides — the stroke is all shoulder.
+ *
+ * A corner's straight side is whatever height the radius does not cover, so a
+ * radius below the box height leaves the sides running down past the middle of
+ * the label. The radius therefore has to be at least the full height.
+ *
+ * CSS clamps a corner's vertical radius to the box height when the opposite
+ * corner is square, which is our case, so the two sizes differ only in how far
+ * the shoulder reaches horizontally:
+ *
+ *   lg  `9999px` also clamps HORIZONTALLY to half the width, so a wide button
+ *       sweeps one continuous curve edge to edge. This is the home page pair.
+ *   md  the radius is pinned to the height instead, giving tight quarter-circle
+ *       shoulders with a flat top between them — the same rule, but it does not
+ *       balloon when the button is only as wide as its label. This is the
+ *       dashboard nav, where several sit in a row at different widths.
  */
 const SIZES: Record<ArchSize, string> = {
-  // Chip proportions, matching the pipeline pills: 48px tall, 24px shoulder.
-  md: "h-12 px-5 text-base rounded-t-[24px]",
-  // The home page pair, unchanged — a deeper cap carries a wide button.
-  lg: "px-7 py-5 text-lg rounded-t-[4rem]",
+  md: "h-12 px-5 text-base rounded-t-[48px]",
+  lg: "px-7 py-5 text-lg rounded-t-[9999px]",
 };
 
 const VARIANTS: Record<ArchVariant, string> = {
