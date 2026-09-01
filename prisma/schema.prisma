@@ -233,6 +233,11 @@ model Invoice {
   id         String   @id @default(cuid())
   dealId     String
   deal       Deal     @relation(fields: [dealId], references: [id])
+  // A closed deal raises two invoices, both to the brand: the creator's rate
+  // and Nspiire's deal fee (lib/deals/fee.ts). They are separate rows, not one
+  // row Nspiire collects and splits — MVP never holds funds, so the fee is
+  // billed on its own and the creator's money never passes through us.
+  kind       InvoiceKind   @default(CREATOR_RATE)
   amountCents Int
   currency   String   @default("USD")
   status     InvoiceStatus @default(DRAFT)
@@ -241,6 +246,12 @@ model Invoice {
   dueAt      DateTime?
   paidAt     DateTime?
   createdAt  DateTime @default(now())
+}
+
+// Who the money on this invoice is for. The brand pays both.
+enum InvoiceKind {
+  CREATOR_RATE // the negotiated rate, owed to the creator
+  PLATFORM_FEE // Nspiire's deal fee, charged on top and owed to Nspiire
 }
 
 enum InvoiceStatus {

@@ -4,6 +4,7 @@ import { prisma, hasDatabase } from "@/lib/prisma";
 import { DEAL_FLOW, type DealState } from "@/lib/deals/stateMachine";
 import { STATE_LABELS, actorLabel } from "@/lib/deals/labels";
 import { formatDays, formatMoney, parseTerms } from "@/lib/deals/terms";
+import { quoteDealFee, type FeeQuote } from "@/lib/deals/fee";
 import {
   checkDealGuardrails,
   parseGuardrails,
@@ -38,7 +39,14 @@ async function load(id: string) {
         transitions: { orderBy: { createdAt: "desc" }, take: 100 },
       },
     });
-    return { ready: true as const, deal };
+    if (!deal) return { ready: true as const, deal: null, priorPaidDeals: 0 };
+    // What this brand has already paid for on Nspiire — the repeat-brand
+    // discount is priced off it. This deal is excluded: it can't be its own
+    // precedent, and it isn't PAID yet anyway.
+    const priorPaidDeals = await prisma.deal.count({
+      where: { brandId: deal.brandId, state: "PAID", id: { not: deal.id } },
+    });
+    return { ready: true as const, deal, priorPaidDeals };
   } catch {
     return { ready: false as const, unreachable: true };
   }
@@ -71,6 +79,7 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
     brandName: deal.brand.name,
     brandCategory: deal.brand.category,
   });
+  const fee = quoteDealFee({ terms, priorPaidDeals: data.priorPaidDeals });
   const next = DEAL_FLOW[state];
 
   return (
@@ -122,6 +131,10 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
               one. The next move snapshots whatever the terms say at that moment.
             </p>
           </form>
+        </Section>
+
+        <Section title="Nspiire fee">
+          <FeePanel fee={fee} brandName={deal.brand.name} />
         </Section>
 
         <Section title={`${deal.creator.name}'s guardrails`}>
@@ -212,6 +225,72 @@ function MoveDeal({
         ))}
       </div>
     </form>
+  );
+}
+
+/**
+ * What the brand owes Nspiire on this deal, and the arithmetic behind it.
+ *
+ * Every line is shown, including the ones that reduce the fee, because a brand
+ * that asks "why $250?" gets read this panel. The creator's number is shown
+ * next to it on purpose: the fee is charged on top of the rate and never taken
+ * out of it, and the panel should make that impossible to misread.
+ */
+function FeePanel({ fee, brandName }: { fee: FeeQuote; brandName: string }) {
+  if (fee.basis !== "computed") {
+    return <p className="text-sm text-neutral-500">{fee.reasoning[0]}</p>;
+  }
+  const rate = ((fee.effectiveRate ?? 0) * 100).toFixed(1);
+  return (
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 py-3">
+        <span className="text-sm font-medium">{brandName} pays Nspiire</span>
+        <span className="text-2xl font-semibold tabular-nums">
+          {formatMoney(fee.feeCents, fee.currency)}
+        </span>
+      </div>
+
+      <ul className="divide-y divide-neutral-200 border-t border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+        {fee.lines.map((line, i) => (
+          <li
+            key={`${line.label}-${i}`}
+            className="flex items-baseline justify-between gap-3 px-4 py-2 text-sm"
+          >
+            <span className="text-neutral-600 dark:text-neutral-400">
+              {line.label}
+            </span>
+            <span className="shrink-0 tabular-nums">
+              {formatMoney(line.amountCents, fee.currency)}
+            </span>
+          </li>
+        ))}
+        <li className="flex items-baseline justify-between gap-3 px-4 py-2 text-sm font-medium">
+          <span>Fee</span>
+          <span className="shrink-0 tabular-nums">
+            {formatMoney(fee.feeCents, fee.currency)} · {rate}% of the deal
+          </span>
+        </li>
+      </ul>
+
+      <dl className="grid grid-cols-2 gap-4 border-t border-neutral-200 px-4 py-3 text-sm dark:border-neutral-800">
+        <Stat
+          term="Brand's total cheque"
+          value={formatMoney(fee.brandTotalCents, fee.currency)}
+        />
+        <Stat
+          term="Creator is paid"
+          value={formatMoney(fee.creatorCents, fee.currency)}
+        />
+      </dl>
+
+      <div className="border-t border-neutral-200 px-4 py-3 dark:border-neutral-800">
+        {fee.reasoning.map((sentence, i) => (
+          <p key={i} className="text-xs text-neutral-500">
+            {sentence}
+          </p>
+        ))}
+      </div>
+    </div>
   );
 }
 
