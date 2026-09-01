@@ -1,6 +1,7 @@
 import { requireOperator } from "@/lib/auth/operator";
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
+import { arch } from "@/components/Button";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { DEAL_FLOW, type DealState } from "@/lib/deals/stateMachine";
 import { ASIDE, PIPELINE, STATE_LABELS } from "@/lib/deals/labels";
@@ -25,10 +26,8 @@ type Counts = Partial<Record<DealState, number>>;
    Note these are OPERATOR actions — "Creators" lists the whole roster and
    "Onboard a creator" adds one. This page is the agency console, not a
    creator's own view of their deals. */
-const NAV_BUTTON =
-  "rounded-xl border border-neutral-300 px-5 py-3 text-base font-medium text-neutral-700 dark:border-neutral-700 dark:text-neutral-300";
-const NAV_BUTTON_PRIMARY =
-  "rounded-xl border border-transparent bg-neutral-900 px-5 py-3 text-base font-medium text-white dark:bg-white dark:text-neutral-900";
+const NAV_BUTTON = arch("secondary", "md");
+const NAV_BUTTON_PRIMARY = arch("primary", "md");
 
 async function load() {
   if (!hasDatabase) return { ready: false as const };

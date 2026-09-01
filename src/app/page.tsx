@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { arch } from "@/components/Button";
 
 /** The happy path, in order — the shape of the thing the agent runs. */
 const PIPELINE = [
@@ -34,13 +35,13 @@ export default function Home() {
       <div className="mt-10 flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
         <Link
           href="/onboarding"
-          className="rounded-xl border border-transparent bg-neutral-900 px-7 py-4.5 text-lg font-medium text-white dark:bg-white dark:text-neutral-900"
+          className={arch("primary", "lg")}
         >
           Set up your agent
         </Link>
         <Link
           href="/dashboard"
-          className="rounded-xl border border-neutral-300 px-7 py-4.5 text-lg font-medium text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"
+          className={arch("secondary", "lg")}
         >
           Dashboard
         </Link>

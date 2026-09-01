@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
+import { arch } from "@/components/Button";
 import { operatorGateConfigured } from "@/lib/auth/operator";
 import { signIn } from "./actions";
 
@@ -53,7 +54,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
         <button
           type="submit"
           disabled={!configured}
-          className="rounded-xl border border-transparent bg-neutral-900 px-5 py-3.5 text-base font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+          className={arch("primary", "md", "disabled:opacity-50")}
         >
           Sign in
         </button>
