@@ -172,3 +172,54 @@ export async function transitionDeal(form: FormData) {
   revalidatePath("/dashboard");
   redirect(base);
 }
+
+/**
+ * Point one deal at a specific destination, or clear it back to the creator's
+ * default. This is the "send this one to the studio" case.
+ *
+ * The destination is re-checked against THIS deal's creator before it is
+ * stored. Deal.shipToId is a plain foreign key, so without that check a stray
+ * id would happily attach one creator's home address to another creator's deal.
+ */
+export async function setDealShipTo(form: FormData) {
+  const dealId = text(form, "dealId");
+  if (!dealId) withError("/deals", "Missing deal.");
+  const base = `/deals/${dealId}`;
+  const shipToId = text(form, "shipToId");
+
+  // Resolved inside the try, acted on outside it: withError() redirects, and
+  // Next signals a redirect by throwing — a redirect thrown inside the try
+  // would be caught by its own catch and turned into the wrong message.
+  let ownedByThisCreator = true;
+  try {
+    const deal = await prisma.deal.findUniqueOrThrow({
+      where: { id: dealId },
+      select: { creatorId: true },
+    });
+
+    if (shipToId) {
+      const owned = await prisma.shippingDestination.count({
+        where: { id: shipToId, creatorId: deal.creatorId },
+      });
+      ownedByThisCreator = owned > 0;
+    }
+
+    if (ownedByThisCreator) {
+      await prisma.deal.update({
+        where: { id: dealId },
+        // Empty means "follow the creator's default", which is a null column,
+        // not a blank string — resolveDestination() reads null as "fall back".
+        data: { shipToId: shipToId || null },
+      });
+    }
+  } catch {
+    withError(base, "Could not set where this ships.");
+  }
+
+  if (!ownedByThisCreator) {
+    withError(base, "That destination doesn't belong to this creator.");
+  }
+
+  revalidatePath(base);
+  redirect(base);
+}

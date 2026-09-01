@@ -23,6 +23,8 @@ src/lib/deals/fee.ts            the deal fee the brand pays Nspiire — how the
                                 product makes money. Pure arithmetic, no model call
 src/lib/deals/policy.ts         house rules: $250 sourcing floor, 30-day
                                 standard usage window
+src/lib/creators/shipping.ts    where brand product may be sent, and how far a
+                                deal must get before the address is released
 src/lib/agents/             the virtual agent roster
   types.ts                  guardrails, approval policy, shared contracts
   claude.ts                 Claude client helper
@@ -37,6 +39,7 @@ src/lib/agents/             the virtual agent roster
 ## Hard rules baked in
 
 - The deal fee is charged to the **brand**, on top of the creator's rate — never netted out of it. A creator who agreed $5,000 is paid $5,000.
+- A creator's shipping address never goes into a model prompt, and is never released to a brand before the deal state the creator chose.
 - Every deal state change goes through `transition()` and is logged — that log trains the deal-terms advisor.
 - Negotiator can never auto-accept terms outside guardrails; `gateOutsideGuardrails` and `gateMoney` cannot be disabled.
 - Contracts never send without human sign-off.
@@ -58,6 +61,39 @@ these apply to everyone:
   `maxUsageDays` guardrail — the opening ask sits exactly at the ceiling a
   creator is assumed to accept without being asked. The fee schedule prices its
   surcharges off it.
+
+## Where product goes
+
+A creator's shipping address is the most sensitive thing here: usually a home
+address, impossible to take back once it is out, and leaked by a completely
+ordinary question — "where do we send the box?". So `src/lib/creators/shipping.ts`
+splits the control into three:
+
+- **Whether** — `acceptsProduct`. Plenty of creators want cash deals only, and
+  then the honest answer is that there is no address.
+- **Where** — several destinations with one default, plus a per-deal override
+  for "send this one to the studio". Nobody has exactly one address: a PO box
+  for strangers, a studio for bulky things, home for almost nothing.
+- **When** — `releaseAddressAt`, one of Terms agreed / Contract sent / Signed.
+  Before that state the deal page shows only `Studio — Austin, US`; the lines a
+  courier could deliver to stay hidden.
+
+`addressReleased()` is a pure function of deal state and stated preference —
+no judgement, no model call, nothing an agent can talk itself past. It fails
+closed everywhere: the default is the strictest option (Signed), a malformed
+policy column parses back to Signed, and a state off the happy path (Lost,
+Renewal watch) releases nothing.
+
+Three structural decisions back that up:
+
+- Destinations are a **relation, not a Json column** on Creator, so a
+  `include: { socials: true }`-style read never sweeps them up — which is why
+  `GET /api/creators` cannot leak them.
+- The per-deal override lives on `Deal.shipToId`, **not in `Deal.terms`**.
+  Terms are snapshotted into the append-only transition log and handed to the
+  Negotiator; an address belongs in neither.
+- Rows are **archived, never deleted** — a parcel already in flight was
+  addressed to one of them, and "where did that box go" has to stay answerable.
 
 ## How Nspiire gets paid
 

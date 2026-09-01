@@ -1,4 +1,5 @@
 import { requireOperator } from "@/lib/auth/operator";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { DEAL_FLOW, type DealState } from "@/lib/deals/stateMachine";
@@ -7,11 +8,24 @@ import { formatDays, formatMoney, parseTerms } from "@/lib/deals/terms";
 import { quoteDealFee, type FeeQuote } from "@/lib/deals/fee";
 import { checkDealPolicy, type PolicyNote } from "@/lib/deals/policy";
 import {
+  addressReleased,
+  describeDestination,
+  formatDestination,
+  parseGiftingPolicy,
+  resolveDestination,
+  type Destination,
+  type GiftingPolicy,
+} from "@/lib/creators/shipping";
+import {
   checkDealGuardrails,
   parseGuardrails,
   type GuardrailViolation,
 } from "@/lib/deals/guardrails";
-import { transitionDeal, updateDealTerms } from "@/app/deals/actions";
+import {
+  setDealShipTo,
+  transitionDeal,
+  updateDealTerms,
+} from "@/app/deals/actions";
 import {
   Crumb,
   ErrorBanner,
@@ -36,7 +50,11 @@ async function load(id: string) {
       where: { id },
       include: {
         brand: true,
-        creator: true,
+        creator: {
+          include: {
+            shippingDestinations: { orderBy: { createdAt: "asc" } },
+          },
+        },
         transitions: { orderBy: { createdAt: "desc" }, take: 100 },
       },
     });
@@ -80,6 +98,9 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
     brandName: deal.brand.name,
     brandCategory: deal.brand.category,
   });
+  const gifting = parseGiftingPolicy(deal.creator.giftingPolicy);
+  const destinations = deal.creator.shippingDestinations;
+  const shipTo = resolveDestination(destinations, deal.shipToId);
   const policyNotes = checkDealPolicy(terms);
   const fee = quoteDealFee({ terms, priorPaidDeals: data.priorPaidDeals });
   const next = DEAL_FLOW[state];
@@ -136,6 +157,19 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
           </form>
         </Section>
 
+        <Section title="Where product goes">
+          <ShipTo
+            dealId={deal.id}
+            state={state}
+            policy={gifting}
+            destination={shipTo}
+            destinations={destinations}
+            selectedId={deal.shipToId}
+            creatorName={deal.creator.name}
+            creatorId={deal.creatorId}
+          />
+        </Section>
+
         <Section title="Nspiire fee">
           <FeePanel fee={fee} brandName={deal.brand.name} />
         </Section>
@@ -175,6 +209,141 @@ function GuardrailAlert({ violations }: { violations: GuardrailViolation[] }) {
         You can still move this deal — you&apos;re the human. The Negotiator
         can&apos;t: terms outside guardrails always stop and ask.
       </p>
+    </div>
+  );
+}
+
+/**
+ * Where this deal's product is sent, and whether the brand may know yet.
+ *
+ * The gate is `addressReleased()`: before the state the creator chose, this
+ * shows that a destination exists and roughly where, never the lines a courier
+ * could deliver to. That is not decoration — an address handed over early
+ * cannot be handed back, and the request that leaks it ("where do we send the
+ * box?") is an entirely ordinary one that arrives long before anyone signs.
+ */
+function ShipTo({
+  dealId,
+  state,
+  policy,
+  destination,
+  destinations,
+  selectedId,
+  creatorName,
+  creatorId,
+}: {
+  dealId: string;
+  state: DealState;
+  policy: GiftingPolicy;
+  destination: Destination | null;
+  destinations: Destination[];
+  selectedId: string | null;
+  creatorName: string;
+  creatorId: string;
+}) {
+  if (!policy.acceptsProduct) {
+    return (
+      <p className="text-sm text-neutral-500">
+        {creatorName} doesn&apos;t take physical product. There is no address to
+        give this brand, whatever stage the deal reaches.
+      </p>
+    );
+  }
+
+  if (!destination) {
+    return (
+      <p className="text-sm text-neutral-500">
+        No destination on file for {creatorName}.{" "}
+        <Link
+          href={`/creators/${creatorId}`}
+          className="underline underline-offset-4"
+        >
+          Add one
+        </Link>{" "}
+        before anything is meant to ship.
+      </p>
+    );
+  }
+
+  const released = addressReleased(state, policy);
+  const choosable = destinations.filter(
+    (d) => d.archivedAt == null || d.id === selectedId,
+  );
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="rounded-xl border border-neutral-200 px-4 py-4 dark:border-neutral-800">
+        {released ? (
+          <>
+            <address className="text-sm not-italic text-neutral-700 dark:text-neutral-300">
+              {formatDestination(destination).map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </address>
+            {destination.instructions && (
+              <p className="mt-2 text-xs text-neutral-500">
+                {destination.instructions}
+              </p>
+            )}
+            <p className="mt-3 text-xs text-neutral-500">
+              Released — this deal has reached{" "}
+              {STATE_LABELS[policy.releaseAddressAt].toLowerCase()}.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-neutral-700 dark:text-neutral-300">
+              {describeDestination(destination)}
+            </p>
+            <p className="mt-3 text-xs text-neutral-500">
+              The full address stays hidden until{" "}
+              {STATE_LABELS[policy.releaseAddressAt].toLowerCase()} — this deal
+              is at {STATE_LABELS[state].toLowerCase()}. {creatorName} set that,
+              and it isn&apos;t yours to work around.
+            </p>
+          </>
+        )}
+      </div>
+
+      {policy.requiresApprovalBeforeSending && (
+        <p className="text-xs text-neutral-500">
+          {creatorName} wants to be asked before anything is posted, including
+          samples nobody billed for.
+        </p>
+      )}
+      {policy.notes && (
+        <p className="text-sm text-neutral-700 dark:text-neutral-300">
+          {policy.notes}
+        </p>
+      )}
+
+      {choosable.length > 1 && (
+        <form action={setDealShipTo} className="flex flex-col gap-2">
+          <input type="hidden" name="dealId" value={dealId} />
+          <label className={label} htmlFor="shipToId">
+            Send this deal somewhere else
+          </label>
+          <select
+            id="shipToId"
+            name="shipToId"
+            className={field}
+            defaultValue={selectedId ?? ""}
+          >
+            <option value="">Their default</option>
+            {choosable.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+                {d.archivedAt ? " (archived)" : ""}
+              </option>
+            ))}
+          </select>
+          <button type="submit" className={`${ghostBtn} self-start`}>
+            Save destination
+          </button>
+        </form>
+      )}
     </div>
   );
 }

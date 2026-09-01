@@ -21,6 +21,10 @@ export async function GET() {
   const denied = await denyIfPublic();
   if (denied) return denied;
 
+  // Deliberately does NOT include shippingDestinations. This endpoint returns
+  // whole rows, and adding that relation to the `include` would put every
+  // creator's home address in one JSON response. If you need destinations, add
+  // an endpoint that returns them for one creator, not this list.
   const creators = await prisma.creator.findMany({
     orderBy: { createdAt: "desc" },
     include: { socials: true },

@@ -4,6 +4,14 @@ import { notFound } from "next/navigation";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { parseGuardrails } from "@/lib/deals/guardrails";
 import { parseMetrics, formatCount, formatRate } from "@/lib/creators/metrics";
+import {
+  ADDRESS_RELEASE_STATES,
+  formatDestination,
+  parseGiftingPolicy,
+  type Destination,
+  type GiftingPolicy,
+} from "@/lib/creators/shipping";
+import { STATE_LABELS } from "@/lib/deals/labels";
 import { formatMoney } from "@/lib/deals/terms";
 import {
   Crumb,
@@ -18,9 +26,13 @@ import {
 } from "@/app/deals/ui";
 import {
   approveOpportunity,
+  archiveShippingDestination,
   findBrandPartners,
   rejectOpportunity,
+  saveGiftingPolicy,
   saveManualMetrics,
+  saveShippingDestination,
+  setDefaultDestination,
 } from "@/app/creators/actions";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +55,7 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
     where: { id },
     include: {
       socials: true,
+      shippingDestinations: { orderBy: { createdAt: "asc" } },
       opportunities: {
         include: { brand: true, deal: { select: { id: true } } },
         orderBy: { fitScore: "desc" },
@@ -52,6 +65,9 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
   if (!creator) notFound();
 
   const guardrails = parseGuardrails(creator.guardrails);
+  const gifting = parseGiftingPolicy(creator.giftingPolicy);
+  const destinations = creator.shippingDestinations;
+  const activeDestinations = destinations.filter((d) => d.archivedAt == null);
   const primary = creator.socials[0];
   // Onboarding writes followerCount to its own column and leaves metrics empty,
   // so fall back to the column rather than showing a dash for a number we have.
@@ -260,8 +276,302 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
               .join(" · ") || "none set"}
           </p>
         </Section>
+
+        <Section title="Where product goes">
+          <GiftingPolicyForm creatorId={creator.id} policy={gifting} />
+          <DestinationList
+            creatorId={creator.id}
+            destinations={destinations}
+            acceptsProduct={gifting.acceptsProduct}
+          />
+          <AddDestination
+            creatorId={creator.id}
+            isFirst={activeDestinations.length === 0}
+          />
+        </Section>
       </div>
     </main>
+  );
+}
+
+/**
+ * The three separate powers a creator has over gifting: whether they take
+ * product at all, whether a brand may post one unasked, and how far a deal has
+ * to get before their address is handed over. The last is the one that matters
+ * most and the one nobody thinks to ask about, so it is a real control rather
+ * than a policy sentence somewhere.
+ */
+function GiftingPolicyForm({
+  creatorId,
+  policy,
+}: {
+  creatorId: string;
+  policy: GiftingPolicy;
+}) {
+  return (
+    <form action={saveGiftingPolicy} className="flex flex-col gap-4">
+      <input type="hidden" name="creatorId" value={creatorId} />
+
+      <label className="flex items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          name="acceptsProduct"
+          defaultChecked={policy.acceptsProduct}
+          className="mt-0.5 size-4"
+        />
+        <span>
+          Accepts physical product
+          <span className="block text-xs text-neutral-500">
+            Off means there is no address to give out, and nothing below is
+            released to anyone.
+          </span>
+        </span>
+      </label>
+
+      <label className="flex items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          name="requiresApprovalBeforeSending"
+          defaultChecked={policy.requiresApprovalBeforeSending}
+          className="mt-0.5 size-4"
+        />
+        <span>
+          A brand must ask before sending anything
+          <span className="block text-xs text-neutral-500">
+            An unsolicited parcel is a disclosure obligation and a tax event,
+            not a treat.
+          </span>
+        </span>
+      </label>
+
+      <div>
+        <label className={label} htmlFor="releaseAddressAt">
+          Release the address at
+        </label>
+        <select
+          id="releaseAddressAt"
+          name="releaseAddressAt"
+          className={field}
+          defaultValue={policy.releaseAddressAt}
+        >
+          {ADDRESS_RELEASE_STATES.map((state) => (
+            <option key={state} value={state}>
+              {STATE_LABELS[state]}
+            </option>
+          ))}
+        </select>
+        <p className={hint}>
+          Before this state the deal page shows that an address exists, not what
+          it is. A brand that hasn&apos;t signed anything has no business holding
+          a home address.
+        </p>
+      </div>
+
+      <div>
+        <label className={label} htmlFor="giftingNotes">
+          Notes for brands
+        </label>
+        <textarea
+          id="giftingNotes"
+          name="giftingNotes"
+          rows={2}
+          className={field}
+          defaultValue={policy.notes}
+          placeholder="Sizes, allergies, what not to send"
+        />
+        <p className={hint}>
+          Goes to brands. Don&apos;t put an address here — that&apos;s what the
+          destinations below are for, and they&apos;re the part that&apos;s
+          gated.
+        </p>
+      </div>
+
+      <button type="submit" className={`${primaryBtn} self-start`}>
+        Save gifting preferences
+      </button>
+    </form>
+  );
+}
+
+function DestinationList({
+  creatorId,
+  destinations,
+  acceptsProduct,
+}: {
+  creatorId: string;
+  destinations: Destination[];
+  acceptsProduct: boolean;
+}) {
+  if (destinations.length === 0) {
+    return (
+      <p className="mt-8 text-sm text-neutral-500">
+        No destinations yet. Until there is one, a deal has nowhere to send
+        product.
+      </p>
+    );
+  }
+  return (
+    <ul className="mt-8 flex flex-col gap-3">
+      {destinations.map((d) => {
+        const archived = d.archivedAt != null;
+        return (
+          <li
+            key={d.id}
+            className={`rounded-xl border px-4 py-4 ${
+              archived
+                ? "border-dashed border-neutral-200 dark:border-neutral-800"
+                : "border-neutral-200 dark:border-neutral-800"
+            }`}
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="font-medium">
+                {d.label}
+                {d.isDefault && !archived && (
+                  <span className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-[11px] uppercase tracking-wide text-neutral-500 dark:border-neutral-700">
+                    default
+                  </span>
+                )}
+                {archived && (
+                  <span className="ml-2 text-xs font-normal text-neutral-500">
+                    archived
+                  </span>
+                )}
+              </span>
+              {!acceptsProduct && !archived && (
+                <span className="text-xs text-amber-700 dark:text-amber-500">
+                  Not in use — product is switched off above
+                </span>
+              )}
+            </div>
+
+            <address className="mt-2 text-sm not-italic text-neutral-700 dark:text-neutral-300">
+              {formatDestination(d).map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </address>
+            {d.instructions && (
+              <p className="mt-2 text-xs text-neutral-500">{d.instructions}</p>
+            )}
+
+            {!archived && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {!d.isDefault && (
+                  <form action={setDefaultDestination}>
+                    <input type="hidden" name="creatorId" value={creatorId} />
+                    <input type="hidden" name="destinationId" value={d.id} />
+                    <button type="submit" className={ghostBtn}>
+                      Make default
+                    </button>
+                  </form>
+                )}
+                <form action={archiveShippingDestination}>
+                  <input type="hidden" name="creatorId" value={creatorId} />
+                  <input type="hidden" name="destinationId" value={d.id} />
+                  <button type="submit" className={ghostBtn}>
+                    Archive
+                  </button>
+                </form>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function AddDestination({
+  creatorId,
+  isFirst,
+}: {
+  creatorId: string;
+  isFirst: boolean;
+}) {
+  return (
+    <details className="mt-8" open={isFirst}>
+      <summary className="cursor-pointer text-sm text-neutral-500">
+        Add a destination
+      </summary>
+      <form action={saveShippingDestination} className="mt-4 flex flex-col gap-4">
+        <input type="hidden" name="creatorId" value={creatorId} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField name="label" label="Name it" placeholder="Studio, PO box…" />
+          <TextField
+            name="recipient"
+            label="Addressed to"
+            placeholder="Who's on the label"
+          />
+        </div>
+        <TextField name="line1" label="Street address" />
+        <TextField name="line2" label="Line 2" placeholder="Unit, floor (optional)" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField name="city" label="City" />
+          <TextField name="region" label="State / region" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField name="postalCode" label="Postal code" />
+          <TextField name="country" label="Country" placeholder="US" />
+        </div>
+        <div>
+          <label className={label} htmlFor="instructions">
+            Courier instructions
+          </label>
+          <input
+            id="instructions"
+            name="instructions"
+            className={field}
+            placeholder="Buzzer code, front desk, delivery window"
+          />
+        </div>
+        <label className="flex items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            name="isDefault"
+            defaultChecked={isFirst}
+            disabled={isFirst}
+            className="size-4"
+          />
+          <span>
+            Make this the default
+            {isFirst && (
+              <span className="ml-1 text-neutral-500">
+                — the first one always is
+              </span>
+            )}
+          </span>
+        </label>
+        <button type="submit" className={`${primaryBtn} self-start`}>
+          Save destination
+        </button>
+      </form>
+    </details>
+  );
+}
+
+function TextField({
+  name,
+  label: labelText,
+  placeholder,
+}: {
+  name: string;
+  label: string;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className={label} htmlFor={name}>
+        {labelText}
+      </label>
+      <input
+        id={name}
+        name={name}
+        className={field}
+        placeholder={placeholder}
+        autoComplete="off"
+      />
+    </div>
   );
 }
 

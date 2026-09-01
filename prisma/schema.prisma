@@ -27,6 +27,13 @@ model Creator {
   voiceProfile  Json     @default("{}")
   // Approval policy: which gates require human sign-off (default: all)
   approvalPolicy Json    @default("{}")
+  // Whether they take physical product at all, whether a brand must ask first,
+  // and how far a deal must get before their address is handed over. Shape
+  // defined by GiftingPolicySchema in lib/creators/shipping.ts.
+  giftingPolicy Json     @default("{}")
+  // Where product may be sent. A relation, not a Json column, so it is never
+  // swept up by a `include: { socials: true }`-style read of the creator.
+  shippingDestinations ShippingDestination[]
   deals         Deal[]
   opportunities Opportunity[]
   createdAt     DateTime @default(now())
@@ -66,6 +73,41 @@ enum Platform {
   SNAPCHAT
   TWITCH
   OTHER
+}
+
+// Where a brand may send product. The most sensitive data in the system: for
+// most creators this is a home address, and the one thing they cannot take back
+// once it is out. Three rules hold it in:
+//   1. It is NEVER put in a model prompt. No agent needs it to do its job, and
+//      a prompt is the one place data goes somewhere we don't control.
+//   2. It is released to a brand only once the deal reaches the state the
+//      creator chose (GiftingPolicy.releaseAddressAt) — see addressReleased().
+//   3. Rows are archived, never deleted, because a parcel already in flight was
+//      addressed to one of them and the record of where it went has to survive.
+model ShippingDestination {
+  id           String    @id @default(cuid())
+  creatorId    String
+  creator      Creator   @relation(fields: [creatorId], references: [id])
+  // What the creator calls it — "Studio", "PO box", "Manager's office".
+  label        String
+  // Who the parcel is addressed to. Deliberately separate from Creator.name:
+  // plenty of creators do not want their legal name on a courier label.
+  recipient    String
+  line1        String
+  line2        String?
+  city         String
+  region       String?
+  postalCode   String
+  country      String    @default("US")
+  // For the courier: buzzer codes, front-desk instructions, delivery windows.
+  instructions String?
+  isDefault    Boolean   @default(false)
+  archivedAt   DateTime?
+  deals        Deal[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([creatorId])
 }
 
 model Brand {
@@ -139,6 +181,12 @@ model Deal {
   // Live negotiated terms: rate, deliverables, usage rights, exclusivity,
   // payment schedule, kill fee, disclosure requirements
   terms         Json      @default("{}")
+  // Where product for THIS deal goes. Null falls back to the creator's default
+  // destination; an explicit value is the creator sending one deal elsewhere.
+  // Kept off Deal.terms on purpose — this is logistics, not a negotiated term,
+  // and terms are snapshotted into the append-only transition log.
+  shipToId      String?
+  shipTo        ShippingDestination? @relation(fields: [shipToId], references: [id])
   transitions   DealTransition[]
   interactions  Interaction[]
   contracts     Contract[]
