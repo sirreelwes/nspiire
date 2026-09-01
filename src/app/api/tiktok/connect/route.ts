@@ -38,9 +38,47 @@ export async function GET(request: Request) {
     );
   }
 
-  const creatorId = new URL(request.url).searchParams.get("creatorId");
+  const url = new URL(request.url);
+  const creatorId = url.searchParams.get("creatorId");
+
   if (!creatorId) {
-    return Response.json({ error: "creatorId is required" }, { status: 400 });
+    // TikTok bouncing the user back HERE rather than to /callback is the
+    // symptom of a redirect-URI mismatch, and it used to surface as a bare
+    // "creatorId is required" — which sends you looking in entirely the wrong
+    // place. If the request carries OAuth params, name the real problem.
+    const looksLikeCallback =
+      url.searchParams.has("code") ||
+      url.searchParams.has("error") ||
+      url.searchParams.has("error_code");
+
+    if (looksLikeCallback) {
+      const expected = new URL("/api/tiktok/callback", url.origin).toString();
+      return Response.json(
+        {
+          error: "TikTok sent the user to /connect instead of /callback.",
+          diagnosis:
+            "TIKTOK_REDIRECT_URI does not match the callback route, or the value registered in the TikTok console differs from the one this app sends.",
+          configuredRedirectUri: cfg.redirectUri,
+          expectedRedirectUri: expected,
+          matches: cfg.redirectUri === expected,
+          tiktokSaid: {
+            error: url.searchParams.get("error"),
+            error_code: url.searchParams.get("error_code"),
+            description: url.searchParams.get("error_description"),
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    return Response.json(
+      {
+        error: "creatorId is required",
+        hint: "Open this from a creator's page rather than directly.",
+        configuredRedirectUri: cfg.redirectUri,
+      },
+      { status: 400 },
+    );
   }
 
   const state = randomBytes(16).toString("hex");

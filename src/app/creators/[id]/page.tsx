@@ -135,12 +135,15 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link
+                {/* A plain <a>, not <Link>. This GET has side effects — it
+                    mints a CSRF state and sets a cookie — and Link prefetches
+                    its href on hover, firing that off before anyone clicks. */}
+                <a
                   href={`/api/tiktok/connect?creatorId=${creator.id}`}
                   className={primaryBtn}
                 >
                   {metrics.source === "tiktok-api" ? "Reconnect TikTok" : "Connect TikTok"}
-                </Link>
+                </a>
               </div>
 
               <details className="mt-8">
