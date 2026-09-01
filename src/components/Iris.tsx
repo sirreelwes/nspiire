@@ -123,8 +123,10 @@ export function irisGreeting(input: {
   toRead: number;
   /** Deals whose terms need approving, or re-approving after a change. */
   toSign: number;
+  /** Brands who asked for this creator and are waiting on an answer. */
+  toAnswer?: number;
 }): { lead: string; follow: string } {
-  const { firstName, toReview, toRead, toSign } = input;
+  const { firstName, toReview, toRead, toSign, toAnswer = 0 } = input;
   const n = (count: number, one: string, many: string) =>
     `${count} ${count === 1 ? one : many}`;
 
@@ -132,6 +134,15 @@ export function irisGreeting(input: {
     return {
       lead: `Hi ${firstName}, ${n(toSign, "deal needs", "deals need")} your sign-off on the money.`,
       follow: "Have a look at the numbers before I take it any further.",
+    };
+  }
+
+  // A brand asking for them outranks a shortlist Iris built: somebody came
+  // looking, which is a better signal and a shorter-lived one.
+  if (toAnswer > 0) {
+    return {
+      lead: `Hi ${firstName}, ${n(toAnswer, "brand", "brands")} asked to work with you.`,
+      follow: "They can't reach you unless you say yes.",
     };
   }
 

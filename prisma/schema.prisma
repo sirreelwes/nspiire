@@ -29,6 +29,7 @@ model Creator {
   approvalPolicy Json    @default("{}")
   deals         Deal[]
   opportunities Opportunity[]
+  brandInterest BrandInterest[]
 
   // --- Creator sign-in ---
   // The creator's own login, separate from the operator password. `email` above
@@ -95,6 +96,7 @@ model Brand {
   relationshipNotes Json @default("{}")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  accounts      BrandAccount[]
 }
 
 model Contact {
@@ -297,4 +299,74 @@ model TermsBenchmark {
   source        String   @default("internal") // internal | external
   closedAt      DateTime
   createdAt     DateTime @default(now())
+}
+
+/// A brand's LOGIN, deliberately separate from the Brand record.
+///
+/// Brand rows are created by Scout — 40-odd companies it has researched, most
+/// of which have never heard of Nspiire. Conflating "a company we know about"
+/// with "a paying customer who can sign in" would mean Scout inventing accounts,
+/// and a name collision would hand someone else's profile to whoever signed up
+/// first. A BrandAccount may CLAIM a Brand, and until an operator says so it
+/// claims nothing.
+model BrandAccount {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String?
+  contactName  String
+  companyName  String
+  website      String?
+
+  /// Set only when an operator matches this account to a researched Brand.
+  brandId String?
+  brand   Brand?  @relation(fields: [brandId], references: [id])
+
+  membership   MembershipStatus @default(PENDING)
+  appliedAt    DateTime         @default(now())
+  decidedAt    DateTime?
+  decidedBy    String?
+  /// Why an application was declined — shown to the applicant.
+  decisionNote String?
+
+  lastLoginAt DateTime?
+  interests   BrandInterest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([membership])
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  DECLINED
+  CANCELLED
+}
+
+/// A brand saying "we like this creator". Non-mutual until the creator accepts:
+/// no thread, no contact details, no message. The creator's consent is the only
+/// thing that opens a channel, exactly as it is for outreach the other way.
+model BrandInterest {
+  id             String       @id @default(cuid())
+  brandAccountId String
+  brandAccount   BrandAccount @relation(fields: [brandAccountId], references: [id])
+  creatorId      String
+  creator        Creator      @relation(fields: [creatorId], references: [id])
+
+  /// What the brand is thinking — the creator sees this when deciding.
+  note String?
+
+  status     InterestStatus @default(SENT)
+  decidedAt  DateTime?
+  createdAt  DateTime       @default(now())
+
+  @@unique([brandAccountId, creatorId])
+  @@index([creatorId, status])
+}
+
+enum InterestStatus {
+  SENT
+  ACCEPTED
+  DECLINED
 }

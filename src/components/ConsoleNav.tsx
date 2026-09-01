@@ -20,6 +20,7 @@ const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/creators", label: "Creators" },
   { href: "/deals", label: "Deals" },
+  { href: "/brands", label: "Brands" },
 ] as const;
 
 export function ConsoleNav({ current }: { current?: string }) {

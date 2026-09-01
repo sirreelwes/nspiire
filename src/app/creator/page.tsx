@@ -13,8 +13,10 @@ import { STATE_LABELS } from "@/lib/deals/labels";
 import { adviseForOpportunity, windowsFor } from "@/lib/deals/opportunityTerms";
 import type { DealState } from "@/lib/deals/stateMachine";
 import {
+  creatorAcceptBrand,
   creatorApproveOutreach,
   creatorApproveTerms,
+  creatorDeclineBrand,
   creatorDeclineOutreach,
   creatorPreviewOutreach,
   creatorRequestTermsChanges,
@@ -43,7 +45,7 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
   const creator = await requireCreator();
   const { error } = await props.searchParams;
 
-  const [socials, deals, opportunities] = await Promise.all([
+  const [socials, deals, inbound, opportunities] = await Promise.all([
     prisma.socialAccount.findMany({ where: { creatorId: creator.id } }),
     prisma.deal.findMany({
       where: { creatorId: creator.id },
@@ -53,6 +55,11 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
     // SOURCED = waiting on the creator. QUALIFIED = they said yes and it is
     // now with their manager. Both are shown, so approving something does not
     // make it vanish with no trace of what they decided.
+    prisma.brandInterest.findMany({
+      where: { creatorId: creator.id, status: "SENT" },
+      include: { brandAccount: true },
+      orderBy: { createdAt: "desc" },
+    }),
     prisma.opportunity.findMany({
       where: { creatorId: creator.id, status: { in: ["SOURCED", "QUALIFIED"] } },
       include: { brand: true },
@@ -94,6 +101,7 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
     toReview: opportunities.filter((o) => o.status === "SOURCED" && !o.draftBody).length,
     toRead: opportunities.filter((o) => o.status === "SOURCED" && !!o.draftBody).length,
     toSign: deals.filter((d) => !termsApprovalIsCurrent(d)).length,
+    toAnswer: inbound.length,
   });
 
   return (
@@ -214,6 +222,48 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
           )}
         </div>
       </section>
+
+      {/* Brands who came looking. Distinct from the shortlist Iris built:
+          somebody asked for THEM, which is a different and better signal. */}
+      {inbound.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
+            Brands who asked for you
+          </h2>
+          <p className="mt-2 text-base text-neutral-500">
+            They can&apos;t reach you unless you say yes.
+          </p>
+          <ul className="mt-4 flex flex-col gap-4">
+            {inbound.map((i) => (
+              <li
+                key={i.id}
+                className="rounded-xl border border-neutral-200 px-5 py-5 dark:border-neutral-800"
+              >
+                <p className="text-lg font-medium">{i.brandAccount.companyName}</p>
+                {i.note && (
+                  <p className="mt-2 text-base leading-snug text-neutral-600 dark:text-neutral-300">
+                    &ldquo;{i.note}&rdquo;
+                  </p>
+                )}
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <form action={creatorAcceptBrand}>
+                    <input type="hidden" name="interestId" value={i.id} />
+                    <button type="submit" className={arch("primary", "md")}>
+                      Talk to them
+                    </button>
+                  </form>
+                  <form action={creatorDeclineBrand}>
+                    <input type="hidden" name="interestId" value={i.id} />
+                    <button type="submit" className={arch("secondary", "md")}>
+                      No thanks
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-12">
         <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">

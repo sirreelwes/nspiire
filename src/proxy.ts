@@ -30,6 +30,10 @@ const PUBLIC_PATHS = new Set([
   // before they have any session at all.
   "/creator/login",
   "/creator/set-password",
+  // Brands apply for themselves, so registration is public — the gate is
+  // membership, not registration.
+  "/brand/login",
+  "/brand/apply",
 ]);
 
 export function proxy(request: NextRequest) {
@@ -47,6 +51,15 @@ export function proxy(request: NextRequest) {
     if (request.cookies.has("nspiire_creator")) return NextResponse.next();
     const login = new URL("/creator/login", request.url);
     return NextResponse.redirect(login);
+  }
+
+  // Three audiences, three cookies. A brand cookie opens neither the console
+  // nor a creator's account, and neither of theirs opens the roster. Presence
+  // only — lib/auth/brand.ts verifies the signature, and requireActiveBrand()
+  // is what checks membership.
+  if (pathname === "/brand" || pathname.startsWith("/brand/")) {
+    if (request.cookies.has("nspiire_brand")) return NextResponse.next();
+    return NextResponse.redirect(new URL("/brand/login", request.url));
   }
 
   if (request.cookies.has("nspiire_op")) return NextResponse.next();

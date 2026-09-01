@@ -392,3 +392,38 @@ export async function completeCreatorProfile(form: FormData): Promise<void> {
   revalidatePath(`/creators/${creator.id}`);
   redirect("/creator");
 }
+
+/* ------------------------------------------------ brands who asked for you */
+
+/**
+ * The creator's half of the handshake.
+ *
+ * A brand expressing interest reaches nothing until this runs — no thread, no
+ * contact details, no message. Accepting is what opens a channel, and the
+ * creator can decline without the brand learning anything beyond that.
+ *
+ * Scoped with updateMany on the SESSION's creator id, so a tampered id updates
+ * zero rows rather than answering on somebody else's behalf.
+ */
+async function answerInterest(form: FormData, status: "ACCEPTED" | "DECLINED") {
+  const creator = await requireCreator();
+  const interestId = text(form, "interestId");
+  if (!interestId) redirect("/creator");
+
+  await prisma.brandInterest.updateMany({
+    where: { id: interestId, creatorId: creator.id, status: "SENT" },
+    data: { status, decidedAt: new Date() },
+  });
+
+  revalidatePath("/creator");
+  revalidatePath("/brand/roster");
+  redirect("/creator");
+}
+
+export async function creatorAcceptBrand(form: FormData): Promise<void> {
+  await answerInterest(form, "ACCEPTED");
+}
+
+export async function creatorDeclineBrand(form: FormData): Promise<void> {
+  await answerInterest(form, "DECLINED");
+}
