@@ -34,7 +34,14 @@ export default async function CreatorsPage() {
           <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
             {creators.map((c) => {
               const primary = c.socials[0];
-              const m = parseMetrics(primary?.metrics);
+              // Onboarding writes followerCount to its own column and leaves
+              // metrics empty until a sync runs, so fall back to the column
+              // rather than showing a dash for a number we already have.
+              const stored = parseMetrics(primary?.metrics);
+              const m = {
+                ...stored,
+                followerCount: stored.followerCount ?? primary?.followerCount ?? null,
+              };
               return (
                 <li key={c.id}>
                   <Link
