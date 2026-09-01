@@ -28,6 +28,15 @@ import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
+/*
+ * Scout runs from this page's server action, and one Claude Opus call with
+ * adaptive thinking takes far longer than the platform's default function
+ * limit — the production log shows a "Find brand partners" POST returning
+ * status 0, an aborted request. Server action duration is governed by the
+ * route segment the form lives on, which is this one.
+ */
+export const maxDuration = 300;
+
 export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
   await requireOperator();
 
