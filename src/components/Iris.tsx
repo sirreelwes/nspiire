@@ -104,3 +104,56 @@ export function IrisGreeting({
     </div>
   );
 }
+
+/**
+ * What Iris says, given what is actually waiting.
+ *
+ * Ordered by what costs the creator most to miss, not by what is newest:
+ * money they have not signed off beats words they have not read, which beats
+ * brands they have not looked at. A greeting that leads with "four new brands"
+ * while a deal sits unapproved is cheerful and wrong.
+ *
+ * Pure, so the copy lives in one place and can be checked without a browser.
+ */
+export function irisGreeting(input: {
+  firstName: string;
+  /** Brands found, not yet looked at. */
+  toReview: number;
+  /** Drafts written and waiting to be read. */
+  toRead: number;
+  /** Deals whose terms need approving, or re-approving after a change. */
+  toSign: number;
+}): { lead: string; follow: string } {
+  const { firstName, toReview, toRead, toSign } = input;
+  const n = (count: number, one: string, many: string) =>
+    `${count} ${count === 1 ? one : many}`;
+
+  if (toSign > 0) {
+    return {
+      lead: `Hi ${firstName}, ${n(toSign, "deal needs", "deals need")} your sign-off on the money.`,
+      follow: "Have a look at the numbers before I take it any further.",
+    };
+  }
+
+  if (toRead > 0) {
+    return {
+      lead: `Hi ${firstName}, I've written ${n(toRead, "email", "emails")} for you to read.`,
+      follow: "Change anything you like — I send exactly what you approve.",
+    };
+  }
+
+  if (toReview > 0) {
+    return {
+      lead: `Hi ${firstName}, I found ${n(toReview, "brand", "brands")} worth a look.`,
+      follow:
+        toReview === 1
+          ? "Does it look interesting?"
+          : "Which ones look interesting?",
+    };
+  }
+
+  return {
+    lead: `Hi ${firstName}, nothing needs you right now.`,
+    follow: "I'll keep looking and tell you when something's worth your time.",
+  };
+}

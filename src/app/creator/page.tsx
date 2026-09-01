@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
-import { IrisGreeting } from "@/components/Iris";
+import { IrisGreeting, irisGreeting } from "@/components/Iris";
 import { prisma } from "@/lib/prisma";
 import { requireCreator } from "@/lib/auth/creator";
 import {
@@ -66,6 +66,15 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
   // Showing an empty dashboard would just be a dead end.
   const needsSetup = !creator.niche || !primary;
 
+  // What Iris opens with is derived from what is actually outstanding, so the
+  // greeting cannot cheerfully announce new brands while a deal sits unsigned.
+  const greeting = irisGreeting({
+    firstName: creator.name.split(" ")[0],
+    toReview: opportunities.filter((o) => o.status === "SOURCED" && !o.draftBody).length,
+    toRead: opportunities.filter((o) => o.status === "SOURCED" && !!o.draftBody).length,
+    toSign: deals.filter((d) => !termsApprovalIsCurrent(d)).length,
+  });
+
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 sm:py-16">
       <header className="mb-10 flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -96,9 +105,8 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
           the other stats. */}
       <IrisGreeting>
         <p>
-          Hi {creator.name.split(" ")[0]}, take a look at some deals I&apos;ve
-          scouted.{" "}
-          <span className="text-neutral-500">Which ones look interesting?</span>
+          {greeting.lead}{" "}
+          <span className="text-neutral-500">{greeting.follow}</span>
         </p>
       </IrisGreeting>
 
