@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
 import { arch } from "@/components/Button";
-import { operatorGateConfigured } from "@/lib/auth/operator";
+import { operatorEmails, operatorGateConfigured } from "@/lib/auth/operator";
 import { signIn } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +11,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
   const { error, next } = await props.searchParams;
   const target = typeof next === "string" ? next : "/dashboard";
   const configured = operatorGateConfigured();
+  const allowedCount = operatorEmails().length;
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-5 py-16">
@@ -32,9 +33,19 @@ export default async function LoginPage(props: PageProps<"/login">) {
       )}
 
       {error === "denied" && (
-        <p className="mt-6 rounded-lg border border-red-300 bg-red-50 px-5 py-4 text-base text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-          That password is not right.
-        </p>
+        <div className="mt-6 rounded-lg border border-red-300 bg-red-50 px-5 py-4 text-base text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p>That email and password don&apos;t match.</p>
+          {/* Configuration state, not secrets. A COUNT tells whether
+              NSPIIRE_OPERATOR_EMAILS reached the runtime at all, which is the
+              difference between "wrong address" and "variable never applied" —
+              and that cannot be told apart from the outside otherwise. No
+              address is ever printed. */}
+          <p className="mt-2 text-sm">
+            {allowedCount === 0
+              ? "No operator emails are configured, so the only accepted sign-in is the legacy username: operator"
+              : `Operator sign-in is restricted to ${allowedCount} configured address${allowedCount === 1 ? "" : "es"}.`}
+          </p>
+        </div>
       )}
 
       <form action={signIn} className="mt-8 flex flex-col gap-4">
