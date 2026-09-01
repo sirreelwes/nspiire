@@ -29,7 +29,10 @@ src/lib/agents/             the virtual agent roster
   types.ts                  guardrails, approval policy, shared contracts
   claude.ts                 Claude client helper
   scout.ts                  brand discovery + fit scoring
-  pitch.ts                  outreach drafting (email-first)
+  persona.ts                the virtual agents — voice, and the clauses a
+                            persona row can never edit
+  conversation.ts           a persona holding a thread, brand-side and
+                            creator-side. Replaces the old pitch.ts
   negotiator.ts             in-thread negotiation within guardrails
   counsel.ts                contract assembly + redlining (doc automation, not legal advice)
   books.ts                  invoicing/payment tracking (CardPointe TODO)
@@ -40,6 +43,8 @@ src/lib/agents/             the virtual agent roster
 
 - The deal fee is charged to the **brand**, on top of the creator's rate — never netted out of it. A creator who agreed $5,000 is paid $5,000.
 - A creator's shipping address never goes into a model prompt, and is never released to a brand before the deal state the creator chose.
+- A virtual agent never claims to be human, and never gets a brand-facing brief containing the creator's floor rate, guardrails or address.
+- Nothing a virtual agent writes to a brand sends itself. Every brand-facing draft comes back gated.
 - Every deal state change goes through `transition()` and is logged — that log trains the deal-terms advisor.
 - Negotiator can never auto-accept terms outside guardrails; `gateOutsideGuardrails` and `gateMoney` cannot be disabled.
 - Contracts never send without human sign-off.
@@ -61,6 +66,49 @@ these apply to everyone:
   `maxUsageDays` guardrail — the opening ask sits exactly at the ceiling a
   creator is assumed to accept without being asked. The fee schedule prices its
   surcharges off it.
+
+## Virtual agents
+
+Iris is the first. `src/lib/agents/persona.ts` holds the roster; a creator
+assigns one per account, and any deal can be handed to someone else
+(`Deal.personaId` overrides `Creator.personaId`, falling back to the first
+active persona).
+
+A Persona is **not** an agent in the `lib/agents` sense. Those are capabilities
+— Scout scores, Negotiator counters, Books invoices. A Persona is a voice
+wearing them, which is why tone lives in a database row a creator can assign
+rather than a const in a prompt file.
+
+She holds two conversations and they are not the same job:
+
+- **To a brand** she is the creator's representation — warm, specific, holding
+  a line. She proposes and relays; she never accepts terms.
+- **To the creator** she works for them — leads with the money, says plainly
+  when a deal is weak, and is told never to talk them into one.
+
+Both run through `conversation.ts` on the same voice. Three rules hold:
+
+**She never claims to be human.** She has a name and writes like a person,
+because a stilted message serves nobody, but asked whether she's a bot she says
+so and carries on. This isn't only manners: brand outreach is commercial
+solicitation, and letting the recipient assume a human wrote it is unlawful in
+places we'll be emailing into (California's B.O.T. Act being the clearest).
+The clause is appended after the configurable voice, so a persona row cannot
+talk its way out of it — same standing as `gateOutsideGuardrails`.
+
+**The brand-facing brief has no field for the creator's secrets.** `BrandBrief`
+carries an asking rate and no floor, no guardrails, no address, no fee
+arithmetic — not because the prompt asks her to keep quiet, but because they
+are not in the bytes she is given. A prompt rule is a request; an absent field
+is a fact. The prompt rules are the second line, for what legitimately has to
+be in the brief.
+
+**Nothing she writes to a brand sends itself.** Every brand-facing result comes
+back with an approval gate, and the draft records what she declined to answer
+so a dodge is visible rather than buried.
+
+The two threads are separate rows (`Interaction.audience`) and are never
+replayed into each other — the creator's thread is full of floor-rate talk.
 
 ## Where product goes
 

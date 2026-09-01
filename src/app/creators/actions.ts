@@ -470,3 +470,23 @@ export async function saveGiftingPolicy(form: FormData) {
   revalidatePath(base);
   redirect(base);
 }
+
+/** Set the account's default virtual agent. A deal can still override it. */
+export async function setCreatorPersona(form: FormData) {
+  const creatorId = text(form, "creatorId");
+  const base = `/creators/${creatorId}`;
+  if (!creatorId) withError("/creators", "Missing creator.");
+  const personaId = text(form, "personaId");
+
+  try {
+    await prisma.creator.update({
+      where: { id: creatorId },
+      data: { personaId: personaId || null },
+    });
+  } catch {
+    withError(base, "Could not assign that agent.");
+  }
+
+  revalidatePath(base);
+  redirect(base);
+}

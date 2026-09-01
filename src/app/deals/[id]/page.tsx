@@ -26,6 +26,8 @@ import {
   transitionDeal,
   updateDealTerms,
 } from "@/app/deals/actions";
+import { AgentPanel } from "@/app/deals/agent-ui";
+import { resolvePersona } from "@/lib/agents/persona";
 import {
   Crumb,
   ErrorBanner,
@@ -53,19 +55,30 @@ async function load(id: string) {
         creator: {
           include: {
             shippingDestinations: { orderBy: { createdAt: "asc" } },
+            persona: true,
           },
         },
+        persona: true,
+        // Both threads in one read, split by audience below. They must never be
+        // rendered into each other: the creator's thread discusses floor rates.
+        interactions: { orderBy: { createdAt: "asc" }, take: 80 },
         transitions: { orderBy: { createdAt: "desc" }, take: 100 },
       },
     });
-    if (!deal) return { ready: true as const, deal: null, priorPaidDeals: 0 };
+    if (!deal) {
+      return { ready: true as const, deal: null, priorPaidDeals: 0, roster: [] };
+    }
+    const roster = await prisma.persona.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: "asc" },
+    });
     // What this brand has already paid for on Nspiire — the repeat-brand
     // discount is priced off it. This deal is excluded: it can't be its own
     // precedent, and it isn't PAID yet anyway.
     const priorPaidDeals = await prisma.deal.count({
       where: { brandId: deal.brandId, state: "PAID", id: { not: deal.id } },
     });
-    return { ready: true as const, deal, priorPaidDeals };
+    return { ready: true as const, deal, priorPaidDeals, roster };
   } catch {
     return { ready: false as const, unreachable: true };
   }
@@ -101,6 +114,9 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
   const gifting = parseGiftingPolicy(deal.creator.giftingPolicy);
   const destinations = deal.creator.shippingDestinations;
   const shipTo = resolveDestination(destinations, deal.shipToId);
+  const persona = resolvePersona(deal.persona, deal.creator.persona, data.roster);
+  const creatorThread = deal.interactions.filter((i) => i.audience === "creator");
+  const brandThread = deal.interactions.filter((i) => i.audience === "brand");
   const policyNotes = checkDealPolicy(terms);
   const fee = quoteDealFee({ terms, priorPaidDeals: data.priorPaidDeals });
   const next = DEAL_FLOW[state];
@@ -131,6 +147,19 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
       <div className="mt-10 flex flex-col gap-12">
         <Section title="Move this deal">
           <MoveDeal dealId={deal.id} state={state} next={next} />
+        </Section>
+
+        <Section title="Your agent">
+          <AgentPanel
+            dealId={deal.id}
+            persona={persona}
+            roster={data.roster}
+            assignedOnDeal={deal.personaId != null}
+            creatorName={deal.creator.name}
+            brandName={deal.brand.name}
+            creatorThread={creatorThread}
+            brandThread={brandThread}
+          />
         </Section>
 
         <Section title="Terms">

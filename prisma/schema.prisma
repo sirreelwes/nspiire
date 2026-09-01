@@ -31,6 +31,9 @@ model Creator {
   // and how far a deal must get before their address is handed over. Shape
   // defined by GiftingPolicySchema in lib/creators/shipping.ts.
   giftingPolicy Json     @default("{}")
+  // Default virtual agent for this account. A deal can override it.
+  personaId     String?
+  persona       Persona? @relation(fields: [personaId], references: [id])
   // Where product may be sent. A relation, not a Json column, so it is never
   // swept up by a `include: { socials: true }`-style read of the creator.
   shippingDestinations ShippingDestination[]
@@ -110,6 +113,35 @@ model ShippingDestination {
   @@index([creatorId])
 }
 
+// A virtual agent — the person a brand thinks they are emailing, and the one
+// the creator talks to about a deal.
+//
+// A Persona is NOT an agent in the lib/agents sense. Those are capabilities:
+// Scout scores, Negotiator counters, Books invoices. A Persona is a voice
+// wearing them. Iris runs outreach and brings deals back; the next one may be
+// warmer, or blunter, or work a different vertical. That is why voice lives in
+// a row a creator can assign rather than in a const in a prompt file.
+//
+// She never pretends to be human. See DISCLOSURE in lib/agents/persona.ts:
+// that clause is appended to every persona's system prompt and cannot be
+// configured off.
+model Persona {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  // What she signs off as — "Partnerships, Nspiire".
+  title     String
+  // Tone, traits, things she never says. Shape: PersonaVoiceSchema.
+  voice     Json     @default("{}")
+  // One line about who she is, shown to the creator when assigning her.
+  bio       String?
+  isActive  Boolean  @default(true)
+  creators  Creator[]
+  deals     Deal[]
+  interactions Interaction[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Brand {
   id            String   @id @default(cuid())
   name          String   @unique
@@ -187,6 +219,9 @@ model Deal {
   // and terms are snapshotted into the append-only transition log.
   shipToId      String?
   shipTo        ShippingDestination? @relation(fields: [shipToId], references: [id])
+  // Who runs this deal. Null falls back to the creator's default persona.
+  personaId     String?
+  persona       Persona? @relation(fields: [personaId], references: [id])
   transitions   DealTransition[]
   interactions  Interaction[]
   contracts     Contract[]
@@ -232,11 +267,20 @@ model Interaction {
   channel   String   // email | dashboard | system
   direction String   // outbound | inbound | internal
   actor     String   // pitch | negotiator | counsel | books | human:<id> | brand
+  // Set when a persona spoke or was spoken to, so "everything Iris said on
+  // this deal" is a query rather than a string match on `actor`.
+  personaId String?
+  persona   Persona? @relation(fields: [personaId], references: [id])
+  // Who the message was for. A brand thread and the creator's own thread live
+  // in the same table and must never be shown to each other.
+  audience  String   @default("creator") // creator | brand
   subject   String?
   body      String?
   // For outbound agent messages: was this gated, and who approved
   approval  Json     @default("{}")
   createdAt DateTime @default(now())
+
+  @@index([dealId, audience, createdAt])
 }
 
 model Contract {

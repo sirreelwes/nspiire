@@ -30,6 +30,8 @@ export const ApprovalPolicySchema = z.object({
 export type ApprovalPolicy = z.infer<typeof ApprovalPolicySchema>;
 
 export type AgentName =
+  /** A virtual agent holding a conversation — see lib/agents/persona.ts. */
+  | "persona"
   | "scout"
   | "pitch"
   | "negotiator"

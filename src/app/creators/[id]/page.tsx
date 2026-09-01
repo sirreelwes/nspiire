@@ -32,6 +32,7 @@ import {
   saveGiftingPolicy,
   saveManualMetrics,
   saveShippingDestination,
+  setCreatorPersona,
   setDefaultDestination,
 } from "@/app/creators/actions";
 
@@ -55,6 +56,7 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
     where: { id },
     include: {
       socials: true,
+      persona: true,
       shippingDestinations: { orderBy: { createdAt: "asc" } },
       opportunities: {
         include: { brand: true, deal: { select: { id: true } } },
@@ -64,6 +66,10 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
   });
   if (!creator) notFound();
 
+  const roster = await prisma.persona.findMany({
+    where: { isActive: true },
+    orderBy: { createdAt: "asc" },
+  });
   const guardrails = parseGuardrails(creator.guardrails);
   const gifting = parseGiftingPolicy(creator.giftingPolicy);
   const destinations = creator.shippingDestinations;
@@ -275,6 +281,47 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
               .map(([f, c]) => `${f} ${formatMoney(c)}`)
               .join(" · ") || "none set"}
           </p>
+        </Section>
+
+        <Section title="Their agent">
+          {roster.length === 0 ? (
+            <p className="text-sm text-neutral-500">
+              No virtual agents on the roster yet.
+            </p>
+          ) : (
+            <form action={setCreatorPersona} className="flex flex-col gap-3">
+              <input type="hidden" name="creatorId" value={creator.id} />
+              <div>
+                <label className={label} htmlFor="personaId">
+                  Runs this account by default
+                </label>
+                <select
+                  id="personaId"
+                  name="personaId"
+                  className={field}
+                  defaultValue={creator.personaId ?? ""}
+                >
+                  <option value="">
+                    {roster[0].name} (first on the roster)
+                  </option>
+                  {roster.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {p.title}
+                    </option>
+                  ))}
+                </select>
+                <p className={hint}>
+                  {creator.persona?.bio ??
+                    roster[0].bio ??
+                    "She runs outreach and brings deals back."}{" "}
+                  Any deal can be handed to someone else.
+                </p>
+              </div>
+              <button type="submit" className={`${primaryBtn} self-start`}>
+                Save
+              </button>
+            </form>
+          )}
         </Section>
 
         <Section title="Where product goes">
