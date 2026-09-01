@@ -49,8 +49,17 @@ export interface ScoutInput {
   };
   /** Brands already in the pipeline, so Scout doesn't re-suggest them. */
   existingBrands?: string[];
+  /** How many to return. Small on purpose — see BATCH_SIZE. */
   count?: number;
 }
+
+/**
+ * A shortlist is only useful if a human will actually read it. Twelve brands
+ * is a list you skim; four is a list you decide on. Scout is meant to be run
+ * again — `existingBrands` already excludes everything in the pipeline, so
+ * each run finds NEW brands rather than repeating itself.
+ */
+const BATCH_SIZE = 4;
 
 const SYSTEM = `You are Scout, the brand-discovery agent for Nspiire, an AI manager for social media creators.
 
@@ -62,7 +71,8 @@ Rules:
 - Do not invent contact names or email addresses. "evidence" must be something a human could go and check — a named creator-sponsorship the brand has run, an affiliate or ambassador programme, a category norm — not a guess dressed up as a fact.
 - If you are unsure a brand actually sponsors creators, say so in the evidence rather than asserting it.
 - fitScore is about fit for THIS creator. Reserve above 0.8 for brands you would bet on.
-- Prefer brands the creator could realistically reach now over aspirational household names.`;
+- Prefer brands the creator could realistically reach now over aspirational household names.
+- Return exactly the number asked for in "howMany". Fewer is better than padding the list with brands you do not believe in.`;
 
 export async function runScout(
   input: ScoutInput,
@@ -89,7 +99,7 @@ export async function runScout(
       offeredFormats: input.creator.guardrails.offeredFormats,
     },
     alreadyInPipeline: input.existingBrands ?? [],
-    howMany: input.count ?? 12,
+    howMany: input.count ?? BATCH_SIZE,
   });
 
   let parsed;
@@ -124,9 +134,17 @@ export async function runScout(
     return true;
   });
 
+  // Enforce the count in code too. "howMany" is a hint in a JSON payload, and
+  // a run that asked for 12 came back with 17 — the same reason the guardrails
+  // are re-checked above rather than trusted to the prompt. Sorted first, so a
+  // trimmed batch is the best of what came back, not the first few.
+  const batch = clean
+    .sort((a, b) => b.fitScore - a.fitScore)
+    .slice(0, input.count ?? BATCH_SIZE);
+
   return {
     agent: "scout",
-    output: clean.sort((a, b) => b.fitScore - a.fitScore),
+    output: batch,
     needsApproval: {
       gate: "shortlist-review",
       reason: `${input.creator.name} reviews the shortlist before anything goes out`,
