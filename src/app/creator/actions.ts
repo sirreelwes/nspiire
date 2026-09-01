@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { parseTerms, termsFingerprint } from "@/lib/deals/terms";
+import { runPitch } from "@/lib/agents/pitch";
+import { formatCount, formatRate, parseMetrics } from "@/lib/creators/metrics";
 import { requireCreator } from "@/lib/auth/creator";
 import {
   CREATOR_COOKIE,
@@ -126,14 +128,104 @@ export async function creatorSignOut(): Promise<void> {
  * Scoped with updateMany and creatorId from the SESSION, never from the form:
  * a mismatched id updates zero rows rather than someone else's shortlist.
  */
-async function decide(form: FormData, status: "QUALIFIED" | "REJECTED") {
+/**
+ * Draft the actual email, so the creator approves WORDS rather than a status.
+ *
+ * Generated on demand — at four brands a run most get declined, and a model
+ * call per brand up front is spend on messages nobody sends. The opportunity
+ * stays SOURCED: drafting is not deciding.
+ */
+export async function creatorPreviewOutreach(form: FormData): Promise<void> {
   const creator = await requireCreator();
   const opportunityId = text(form, "opportunityId");
   if (!opportunityId) redirect("/creator");
 
-  await prisma.opportunity.updateMany({
+  const opp = await prisma.opportunity.findFirst({
     where: { id: opportunityId, creatorId: creator.id, status: "SOURCED" },
-    data: { status },
+    include: { brand: true },
+  });
+  if (!opp) redirect("/creator");
+
+  const social = await prisma.socialAccount.findFirst({
+    where: { creatorId: creator.id },
+  });
+  const metrics = parseMetrics(social?.metrics);
+  // Pitch quotes from this line and is told never to invent a number, so the
+  // only figures that can reach a brand are ones we actually measured.
+  const stats = [
+    `${formatCount(social?.followerCount ?? metrics.followerCount)} followers on ${social?.platform ?? "TikTok"}`,
+    metrics.avgViews != null
+      ? `${formatCount(metrics.avgViews)} average views over ${metrics.sampleSize} recent posts`
+      : null,
+    metrics.engagementRateByViews != null
+      ? `${formatRate(metrics.engagementRateByViews)} engagement per view`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const result = await runPitch({
+    creator: {
+      name: creator.name,
+      niche: creator.niche ?? "",
+      stats,
+      voiceProfile: (creator.voiceProfile ?? {}) as Record<string, unknown>,
+    },
+    brand: {
+      name: opp.brand.name,
+      category: opp.brand.category,
+      rationale: opp.rationale ?? "",
+    },
+    format: opp.suggestedFormat ?? "",
+  });
+
+  if (result.escalation) redirect("/creator?error=draft");
+
+  await prisma.opportunity.update({
+    where: { id: opp.id },
+    data: {
+      draftSubject: result.output.subject,
+      draftBody: result.output.body,
+      draftGeneratedAt: new Date(),
+      draftApprovedAt: null,
+    },
+  });
+
+  revalidatePath("/creator");
+  redirect("/creator");
+}
+
+/**
+ * "Yes, send this." Approves the MESSAGE, not merely the brand.
+ *
+ * The subject and body come back from the form, so any edit the creator made
+ * is what gets stored and what would be sent — approving a draft they then
+ * changed would be the same rubber stamp this replaced.
+ */
+export async function creatorApproveOutreach(form: FormData): Promise<void> {
+  const creator = await requireCreator();
+  const opportunityId = text(form, "opportunityId");
+  const subject = text(form, "subject").slice(0, 300);
+  const body = text(form, "body").slice(0, 20000);
+  if (!opportunityId) redirect("/creator");
+
+  // A draft must already exist: approving outreach with no message is exactly
+  // the rubber stamp this flow replaced.
+  const opp = await prisma.opportunity.findFirst({
+    where: { id: opportunityId, creatorId: creator.id, status: "SOURCED" },
+    select: { id: true, draftBody: true },
+  });
+  if (!opp || !opp.draftBody) redirect("/creator?error=nodraft");
+  if (!subject || !body) redirect("/creator?error=empty");
+
+  await prisma.opportunity.update({
+    where: { id: opp.id },
+    data: {
+      status: "QUALIFIED",
+      draftSubject: subject,
+      draftBody: body,
+      draftApprovedAt: new Date(),
+    },
   });
 
   revalidatePath("/creator");
@@ -141,14 +233,20 @@ async function decide(form: FormData, status: "QUALIFIED" | "REJECTED") {
   redirect("/creator");
 }
 
-/** "Yes, you can approach them." */
-export async function creatorApproveOutreach(form: FormData): Promise<void> {
-  await decide(form, "QUALIFIED");
-}
-
 /** "No, don't." */
 export async function creatorDeclineOutreach(form: FormData): Promise<void> {
-  await decide(form, "REJECTED");
+  const creator = await requireCreator();
+  const opportunityId = text(form, "opportunityId");
+  if (!opportunityId) redirect("/creator");
+
+  await prisma.opportunity.updateMany({
+    where: { id: opportunityId, creatorId: creator.id, status: "SOURCED" },
+    data: { status: "REJECTED" },
+  });
+
+  revalidatePath("/creator");
+  revalidatePath(`/creators/${creator.id}`);
+  redirect("/creator");
 }
 
 /* ------------------------------------------------ approving the deal terms */

@@ -1,58 +1,78 @@
-import { ask } from "./claude";
-import type { AgentResult, ApprovalPolicy } from "./types";
+import { z } from "zod";
+import { askStructured } from "./claude";
+import type { AgentResult } from "./types";
 
 /**
- * Pitch — crafts personalized outreach in the creator's voice (blueprint §4).
- * Email-first (blueprint §5: cleaner legally and technically than DMs).
- * Sending happens elsewhere (email infra TBD, §9.6); Pitch only drafts.
+ * Pitch — drafts the outreach email in the creator's voice (blueprint §4).
+ *
+ * Email-first (blueprint §5: cleaner legally and technically than DMs). Pitch
+ * only DRAFTS. Nothing in this codebase can send, and that is deliberate for
+ * now — the creator reads the actual words and approves them, and the operator
+ * sends by hand until an email provider is wired up.
+ *
+ * Drafted on demand rather than for every brand Scout finds: at four brands a
+ * run most get declined, and a model call per brand up front is spend on
+ * messages nobody will send.
  */
+
+export const DraftEmailSchema = z.object({
+  subject: z.string(),
+  body: z.string(),
+});
+export type DraftEmail = z.infer<typeof DraftEmailSchema>;
 
 export interface PitchInput {
   creator: {
     name: string;
     niche: string;
+    /** Human-readable audience line — Pitch quotes from this, never invents. */
+    stats: string;
     voiceProfile: Record<string, unknown>;
-    stats: string; // short human-readable stats line for the pitch
   };
-  brand: { name: string; category?: string; rationale: string };
-  contact?: { name?: string; email?: string };
-  approvalPolicy: ApprovalPolicy;
-  isFirstTouchToBrand: boolean;
-}
-
-export interface DraftEmail {
-  to?: string;
-  subject: string;
-  body: string;
+  brand: { name: string; category?: string | null; rationale: string };
+  format: string;
 }
 
 const SYSTEM = `You are Pitch, the outreach agent for Nspiire, an AI manager for social media creators.
-Write a short, specific, human-sounding sponsorship pitch email from the creator (or their management) to the brand.
-Use the creator's voice profile. No hype-speak, no "I hope this finds you well", no em-dash abuse.
-2 short paragraphs max + a clear ask for a call or rate-card send. Include one concrete audience stat.
-Return strict JSON: {"subject","body"}. No prose.`;
+
+Write a short sponsorship pitch email FROM the creator TO the brand.
+
+Rules:
+- Two short paragraphs at most, then one clear ask (a call, or their rate card / campaign calendar).
+- Include exactly one concrete audience number, taken from the stats line you are given. Never invent or round a number you were not given.
+- Say specifically why THIS brand and this creator fit. A pitch that would work for any brand is a bad pitch.
+- Plain human English. No "I hope this finds you well", no "in today's landscape", no hype, no emoji, no exclamation marks.
+- Do not promise results, reach figures or conversions you cannot evidence.
+- Do not invent a contact name. If you have no name, open without one.
+- Sign off as the creator by name.
+- The subject line is under 60 characters and says something specific.`;
 
 export async function runPitch(
-  input: PitchInput
+  input: PitchInput,
 ): Promise<AgentResult<DraftEmail>> {
-  const raw = await ask(SYSTEM, JSON.stringify(input));
-  let draft: DraftEmail;
   try {
-    draft = JSON.parse(raw.replace(/```json?|```/g, "").trim());
-  } catch {
+    const draft = await askStructured(
+      SYSTEM,
+      JSON.stringify(input),
+      DraftEmailSchema,
+      { effort: "medium" },
+    );
+    return {
+      agent: "pitch",
+      output: draft,
+      // Always. The creator reads the words before anything leaves.
+      needsApproval: {
+        gate: "first-outreach",
+        reason: `${input.creator.name} approves the message before it goes to ${input.brand.name}`,
+      },
+    };
+  } catch (err) {
     return {
       agent: "pitch",
       output: { subject: "", body: "" },
-      escalation: { reason: "Pitch returned unparseable output" },
+      escalation: {
+        reason: err instanceof Error ? err.message : "Pitch failed",
+      },
     };
   }
-  draft.to = input.contact?.email;
-  const needsApproval =
-    input.isFirstTouchToBrand && input.approvalPolicy.gateFirstOutreach
-      ? {
-          gate: "first-outreach",
-          reason: `First contact with ${input.brand.name} requires creator approval`,
-        }
-      : undefined;
-  return { agent: "pitch", output: draft, needsApproval };
 }

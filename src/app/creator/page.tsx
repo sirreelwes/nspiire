@@ -15,6 +15,7 @@ import {
   creatorApproveOutreach,
   creatorApproveTerms,
   creatorDeclineOutreach,
+  creatorPreviewOutreach,
   creatorRequestTermsChanges,
   creatorSignOut,
 } from "./actions";
@@ -22,6 +23,11 @@ import { arch } from "@/components/Button";
 import { CreatorSetupForm } from "./setup-form";
 
 export const dynamic = "force-dynamic";
+
+/* Pitch drafts the outreach email from this page's server action, and a model
+   call outruns the platform's default function limit — the same abort that
+   killed "Find brand partners". */
+export const maxDuration = 300;
 
 /**
  * A creator's own view.
@@ -202,7 +208,8 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
           Waiting on you
         </h2>
         <p className="mt-2 text-base text-neutral-500">
-          Your agent found these. Nobody is contacted until you say yes.
+          Your agent found these. Nothing is written or sent until you ask for
+          it, and you read every word first.
         </p>
 
         <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
@@ -235,15 +242,66 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
                   )}
 
                   {o.status === "QUALIFIED" ? (
-                    <p className="mt-4 text-base font-medium text-[var(--logo-accent)]">
-                      You approved this — your manager is taking it from here.
-                    </p>
+                    <>
+                      <p className="mt-4 text-base font-medium text-[var(--logo-accent)]">
+                        You approved this message — your manager sends it from
+                        here.
+                      </p>
+                      {o.draftBody && (
+                        <details className="mt-3">
+                          <summary className="cursor-pointer text-sm text-neutral-500">
+                            See what you approved
+                          </summary>
+                          <p className="mt-2 text-sm font-medium">
+                            {o.draftSubject}
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap text-sm leading-snug text-neutral-500">
+                            {o.draftBody}
+                          </p>
+                        </details>
+                      )}
+                    </>
+                  ) : o.draftBody ? (
+                    /* The draft exists: the creator approves the WORDS, and can
+                       edit them first. What they submit is what gets stored. */
+                    <form action={creatorApproveOutreach} className="mt-4">
+                      <input type="hidden" name="opportunityId" value={o.id} />
+                      <p className="text-sm font-medium uppercase tracking-wide text-neutral-400">
+                        The email that would go to {o.brand.name}
+                      </p>
+                      <label className="mt-3 flex flex-col gap-2">
+                        <span className="text-sm text-neutral-500">Subject</span>
+                        <input
+                          name="subject"
+                          defaultValue={o.draftSubject ?? ""}
+                          className="rounded-xl border border-neutral-300 px-4 py-3 text-base dark:border-neutral-700 dark:bg-neutral-900"
+                        />
+                      </label>
+                      <label className="mt-3 flex flex-col gap-2">
+                        <span className="text-sm text-neutral-500">Message</span>
+                        <textarea
+                          name="body"
+                          defaultValue={o.draftBody}
+                          rows={10}
+                          className="rounded-xl border border-neutral-300 px-4 py-3 text-base leading-snug dark:border-neutral-700 dark:bg-neutral-900"
+                        />
+                      </label>
+                      <p className="mt-2 text-sm text-neutral-500">
+                        Edit anything you don&apos;t like. Nothing is sent
+                        automatically — your manager sends it once you approve.
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <button type="submit" className={arch("primary", "md")}>
+                          Approve this message
+                        </button>
+                      </div>
+                    </form>
                   ) : (
                     <div className="mt-4 flex flex-wrap gap-3">
-                      <form action={creatorApproveOutreach}>
+                      <form action={creatorPreviewOutreach}>
                         <input type="hidden" name="opportunityId" value={o.id} />
                         <button type="submit" className={arch("primary", "md")}>
-                          Approve outreach
+                          Write the email
                         </button>
                       </form>
                       <form action={creatorDeclineOutreach}>

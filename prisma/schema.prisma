@@ -130,6 +130,14 @@ model Opportunity {
   updatedAt   DateTime @updatedAt
 
   @@unique([creatorId, brandId])
+  // --- Outreach draft ---
+  // The actual email the creator reads and approves. Drafted on demand by the
+  // Pitch agent, not for every brand Scout finds. draftApprovedAt is what makes
+  // "approve outreach" mean approving WORDS rather than a status change.
+  draftSubject     String?
+  draftBody        String?  @db.Text
+  draftGeneratedAt DateTime?
+  draftApprovedAt  DateTime?
 }
 
 enum OpportunityStatus {

@@ -283,6 +283,23 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
                       {o.evidence}
                     </p>
                   )}
+                  {o.draftApprovedAt && o.draftBody && (
+                    <details className="mt-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800">
+                      <summary className="cursor-pointer text-sm text-neutral-500">
+                        Approved message — send this to {o.brand.name}
+                      </summary>
+                      <p className="mt-2 text-sm font-medium">{o.draftSubject}</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm leading-snug text-neutral-600 dark:text-neutral-300">
+                        {o.draftBody}
+                      </p>
+                      <p className={`${hint} mt-2`}>
+                        Approved by {creator.name} on{" "}
+                        {o.draftApprovedAt.toISOString().slice(0, 10)}. Nothing
+                        sends automatically — copy this and send it.
+                      </p>
+                    </details>
+                  )}
+
                   <div className="mt-4 flex flex-wrap gap-2">
                     <form action={approveOpportunity}>
                       <input type="hidden" name="creatorId" value={creator.id} />
