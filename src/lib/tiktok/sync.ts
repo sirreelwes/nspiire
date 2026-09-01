@@ -112,6 +112,17 @@ export async function linkConnection(
       : null) ??
     (await prisma.socialAccount.findFirst({
       where: { creatorId, platform: "TIKTOK", handle: profile.handle },
+    })) ??
+    // The Display API returns display_name ("Wine Blind"), never the
+    // @username, so the handle the creator typed at onboarding
+    // ("wine.blind") will not match and the two lookups above both miss on a
+    // first connection. Adopt the creator's existing unconnected TikTok row
+    // rather than creating a second one — a duplicate is worse than a
+    // mismatched label, because the page renders socials[0] and the synced
+    // data would sit there invisible.
+    (await prisma.socialAccount.findFirst({
+      where: { creatorId, platform: "TIKTOK", externalId: null },
+      orderBy: { id: "asc" },
     }));
 
   const data = {
@@ -124,6 +135,9 @@ export async function linkConnection(
   };
 
   if (existing) {
+    // Deliberately does not touch `handle`: the creator's own "@wine.blind" is
+    // more useful than TikTok's display name, and overwriting it would break
+    // the handle lookup above on the next connection.
     return prisma.socialAccount.update({ where: { id: existing.id }, data });
   }
   return prisma.socialAccount.create({
