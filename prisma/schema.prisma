@@ -152,6 +152,17 @@ model Deal {
   // Live negotiated terms: rate, deliverables, usage rights, exclusivity,
   // payment schedule, kill fee, disclosure requirements
   terms         Json      @default("{}")
+
+  // --- Creator approval of the terms ---
+  // A creator must approve the material terms before a contract can be sent.
+  // The fingerprint is a hash of those terms AS APPROVED, so editing the money
+  // after the fact silently invalidates the approval rather than carrying it
+  // forward. See termsFingerprint() in lib/deals/terms.ts.
+  termsApprovedAt          DateTime?
+  termsApprovedFingerprint String?
+  // Set when the creator asks for changes instead of approving.
+  creatorTermsNote         String?
+
   transitions   DealTransition[]
   interactions  Interaction[]
   contracts     Contract[]

@@ -4,7 +4,12 @@ import { notFound } from "next/navigation";
 import { prisma, hasDatabase } from "@/lib/prisma";
 import { DEAL_FLOW, type DealState } from "@/lib/deals/stateMachine";
 import { STATE_LABELS, actorLabel } from "@/lib/deals/labels";
-import { formatDays, formatMoney, parseTerms } from "@/lib/deals/terms";
+import {
+  formatDays,
+  formatMoney,
+  parseTerms,
+  termsApprovalIsCurrent,
+} from "@/lib/deals/terms";
 import {
   checkDealGuardrails,
   parseGuardrails,
@@ -99,6 +104,41 @@ export default async function DealPage(props: PageProps<"/deals/[id]">) {
       {violations.length > 0 && <GuardrailAlert violations={violations} />}
 
       <div className="mt-10 flex flex-col gap-12">
+        {/* The creator's terms gate, shown before the operator clicks a button
+            that will be refused. Derived from the fingerprint, so "approved"
+            here means approved for the terms CURRENTLY on the deal. */}
+        <Section title="Creator approval">
+          {termsApprovalIsCurrent(deal) ? (
+            <p className="text-base">
+              <span className="font-medium text-[var(--logo-accent)]">
+                {deal.creator.name} approved these terms
+              </span>
+              {deal.termsApprovedAt && (
+                <span className="text-neutral-500">
+                  {" on "}
+                  {deal.termsApprovedAt.toISOString().slice(0, 10)}
+                </span>
+              )}
+              . A contract can go out.
+            </p>
+          ) : deal.termsApprovedAt ? (
+            <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-base text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              The terms changed after {deal.creator.name} approved them. They
+              need to approve again before a contract can be sent.
+            </p>
+          ) : (
+            <p className="text-base text-neutral-600 dark:text-neutral-300">
+              Waiting on {deal.creator.name}. They approve terms from their own
+              sign-in, and no contract can be sent until they do.
+            </p>
+          )}
+          {deal.creatorTermsNote && (
+            <p className="mt-3 text-base text-neutral-500">
+              They asked for changes: “{deal.creatorTermsNote}”
+            </p>
+          )}
+        </Section>
+
         <Section title="Move this deal">
           <MoveDeal dealId={deal.id} state={state} next={next} />
         </Section>

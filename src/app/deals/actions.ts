@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { InvalidTransitionError, transition } from "@/lib/deals/stateMachine";
+import {
+  InvalidTransitionError,
+  TermsNotApprovedError,
+  transition,
+} from "@/lib/deals/stateMachine";
 import { isDealState } from "@/lib/deals/labels";
 import { DealTermsSchema, toCents } from "@/lib/deals/terms";
 
@@ -163,6 +167,11 @@ export async function transitionDeal(form: FormData) {
     if (err instanceof InvalidTransitionError) {
       // Usually a stale tab: the deal moved on since this page was rendered.
       withError(base, `${err.message}. Reload and try again.`);
+    }
+    // The creator's terms gate. Its message already says what to do, and it is
+    // not an error in the "something broke" sense — it is the system working.
+    if (err instanceof TermsNotApprovedError) {
+      withError(base, err.message);
     }
     withError(base, "Could not move the deal.");
   }

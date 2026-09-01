@@ -4,6 +4,8 @@
  * so it never imports @prisma/client. Callers pass the real client.
  */
 
+import { parseTerms, termsFingerprint } from "./terms";
+
 /**
  * Mirrors the DealState enum in prisma/schema.prisma. Kept local so the app
  * builds before `prisma generate` has run (CI/sandbox); if you change one,
@@ -51,6 +53,17 @@ export class InvalidTransitionError extends Error {
   }
 }
 
+/** A contract cannot go out on terms the creator has not approved. */
+export class TermsNotApprovedError extends Error {
+  constructor(reason: "never" | "stale") {
+    super(
+      reason === "never"
+        ? "The creator hasn't approved these terms yet."
+        : "The terms changed after the creator approved them — they need to approve again.",
+    );
+  }
+}
+
 export function canTransition(from: DealState, to: DealState): boolean {
   return DEAL_FLOW[from]?.includes(to) ?? false;
 }
@@ -75,6 +88,21 @@ export async function transition(prisma: any, input: TransitionInput) {
     });
     if (!canTransition(deal.state, input.to)) {
       throw new InvalidTransitionError(deal.state, input.to);
+    }
+
+    // The terms gate, at the single choke point every path goes through — UI,
+    // agents and scripts alike. Putting it in the route handler instead would
+    // mean the Counsel agent could send a contract the creator never saw.
+    //
+    // Checked against the fingerprint rather than a boolean, so editing the
+    // money after approval invalidates it instead of riding along.
+    if (input.to === "CONTRACT_SENT") {
+      if (!deal.termsApprovedAt || !deal.termsApprovedFingerprint) {
+        throw new TermsNotApprovedError("never");
+      }
+      if (deal.termsApprovedFingerprint !== termsFingerprint(parseTerms(deal.terms))) {
+        throw new TermsNotApprovedError("stale");
+      }
     }
     const updated = await tx.deal.update({
       where: { id: deal.id },

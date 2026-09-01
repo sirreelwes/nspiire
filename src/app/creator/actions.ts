@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { parseTerms, termsFingerprint } from "@/lib/deals/terms";
 import { requireCreator } from "@/lib/auth/creator";
 import {
   CREATOR_COOKIE,
@@ -148,4 +149,64 @@ export async function creatorApproveOutreach(form: FormData): Promise<void> {
 /** "No, don't." */
 export async function creatorDeclineOutreach(form: FormData): Promise<void> {
   await decide(form, "REJECTED");
+}
+
+/* ------------------------------------------------ approving the deal terms */
+
+/**
+ * The creator's decision on what a brand is actually paying them.
+ *
+ * Approval stores a fingerprint of the terms as approved, not a boolean. If the
+ * money, format, usage window, exclusivity or deliverables change afterwards,
+ * the fingerprint no longer matches and transition() refuses to send a
+ * contract until the creator has looked again. An approval means "I agreed to
+ * THESE terms", not "I trust this deal forever".
+ */
+export async function creatorApproveTerms(form: FormData): Promise<void> {
+  const creator = await requireCreator();
+  const dealId = text(form, "dealId");
+  if (!dealId) redirect("/creator");
+
+  // Scoped read: a deal id from the form is only ever looked up together with
+  // the session's creator id, so another creator's deal simply is not found.
+  const deal = await prisma.deal.findFirst({
+    where: { id: dealId, creatorId: creator.id },
+    select: { id: true, terms: true },
+  });
+  if (!deal) redirect("/creator");
+
+  await prisma.deal.update({
+    where: { id: deal.id },
+    data: {
+      termsApprovedAt: new Date(),
+      termsApprovedFingerprint: termsFingerprint(parseTerms(deal.terms)),
+      creatorTermsNote: null,
+    },
+  });
+
+  revalidatePath("/creator");
+  revalidatePath(`/deals/${deal.id}`);
+  redirect("/creator");
+}
+
+/** "Not at this price" — clears any approval and records why. */
+export async function creatorRequestTermsChanges(form: FormData): Promise<void> {
+  const creator = await requireCreator();
+  const dealId = text(form, "dealId");
+  const note = text(form, "note").slice(0, 1000);
+  if (!dealId) redirect("/creator");
+
+  const updated = await prisma.deal.updateMany({
+    where: { id: dealId, creatorId: creator.id },
+    data: {
+      termsApprovedAt: null,
+      termsApprovedFingerprint: null,
+      creatorTermsNote: note || "Asked for changes.",
+    },
+  });
+  if (updated.count === 0) redirect("/creator");
+
+  revalidatePath("/creator");
+  revalidatePath(`/deals/${dealId}`);
+  redirect("/creator");
 }

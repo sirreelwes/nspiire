@@ -3,12 +3,19 @@ import { LogoMark } from "@/components/Logo";
 import { prisma } from "@/lib/prisma";
 import { requireCreator } from "@/lib/auth/creator";
 import { parseMetrics, formatCount, formatRate } from "@/lib/creators/metrics";
-import { parseTerms, formatMoney } from "@/lib/deals/terms";
+import {
+  formatDays,
+  formatMoney,
+  parseTerms,
+  termsApprovalIsCurrent,
+} from "@/lib/deals/terms";
 import { STATE_LABELS } from "@/lib/deals/labels";
 import type { DealState } from "@/lib/deals/stateMachine";
 import {
   creatorApproveOutreach,
+  creatorApproveTerms,
   creatorDeclineOutreach,
+  creatorRequestTermsChanges,
   creatorSignOut,
 } from "./actions";
 import { arch } from "@/components/Button";
@@ -105,23 +112,69 @@ export default async function CreatorHomePage() {
             <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {deals.map((d) => {
                 const terms = parseTerms(d.terms);
+                const approved = termsApprovalIsCurrent(d);
+                // Approved once, then edited: the fingerprint no longer matches
+                // and it needs looking at again.
+                const stale = !approved && d.termsApprovedAt != null;
                 return (
-                  <li
-                    key={d.id}
-                    className="flex items-center justify-between gap-3 px-5 py-4 text-base"
-                  >
-                    <span className="min-w-0 truncate">
-                      {d.brand.name}
-                      {terms.amountCents != null && (
-                        <span className="text-neutral-500">
-                          {" · "}
-                          {formatMoney(terms.amountCents, terms.currency)}
-                        </span>
-                      )}
-                    </span>
-                    <span className="shrink-0 text-neutral-500">
-                      {STATE_LABELS[d.state as DealState]}
-                    </span>
+                  <li key={d.id} className="px-5 py-5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <span className="text-lg font-medium">{d.brand.name}</span>
+                      <span className="shrink-0 text-sm text-neutral-500">
+                        {STATE_LABELS[d.state as DealState]}
+                      </span>
+                    </div>
+
+                    <dl className="mt-3 grid grid-cols-2 gap-3 text-base sm:grid-cols-4">
+                      <Term label="You get" value={formatMoney(terms.amountCents, terms.currency)} />
+                      <Term label="Format" value={terms.format || "—"} />
+                      <Term label="They can run it" value={formatDays(terms.usageDays)} />
+                      <Term label="Exclusivity" value={formatDays(terms.exclusivityDays)} />
+                    </dl>
+                    {terms.deliverables && (
+                      <p className="mt-3 text-base leading-snug text-neutral-600 dark:text-neutral-300">
+                        {terms.deliverables}
+                      </p>
+                    )}
+
+                    {approved ? (
+                      <p className="mt-4 text-base font-medium text-[var(--logo-accent)]">
+                        You approved these terms.
+                      </p>
+                    ) : (
+                      <div className="mt-4">
+                        {stale && (
+                          <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-base text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                            These terms changed after you approved them. Have
+                            another look.
+                          </p>
+                        )}
+                        {d.creatorTermsNote && (
+                          <p className="mb-3 text-base text-neutral-500">
+                            You asked for changes: “{d.creatorTermsNote}”
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-3">
+                          <form action={creatorApproveTerms}>
+                            <input type="hidden" name="dealId" value={d.id} />
+                            <button type="submit" className={arch("primary", "md")}>
+                              Approve these terms
+                            </button>
+                          </form>
+                          <form action={creatorRequestTermsChanges} className="flex flex-wrap items-center gap-2">
+                            <input type="hidden" name="dealId" value={d.id} />
+                            <input
+                              name="note"
+                              placeholder="What needs to change?"
+                              className="rounded-xl border border-neutral-300 px-4 py-2.5 text-base dark:border-neutral-700 dark:bg-neutral-900"
+                            />
+                            <button type="submit" className={arch("secondary", "md")}>
+                              Ask for changes
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -194,6 +247,15 @@ export default async function CreatorHomePage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function Term({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-sm text-neutral-500">{label}</dt>
+      <dd className="mt-0.5 font-medium">{value}</dd>
+    </div>
   );
 }
 
