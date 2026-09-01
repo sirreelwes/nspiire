@@ -1,0 +1,29 @@
+/*
+ * The arch — the top half of a pill's outline.
+ *
+ * This cannot be done with `border-*`. A border follows the box, so the only
+ * way to stop the stroke is to shorten the radius, and a radius shorter than
+ * the height leaves a straight side running down past the middle of the label.
+ * A radius equal to the height removes the straight side but carries the
+ * stroke all the way to the bottom corners instead.
+ *
+ * So the outline is drawn as a real pill on a pseudo-element and then cut at
+ * the halfway line. The ends terminate exactly at the vertical middle of the
+ * label, which is the whole point — the same relationship the logo's handle
+ * has to the two uprights it rides above.
+ */
+.arch {
+  position: relative;
+}
+
+.arch::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--arch-line, currentColor);
+  border-radius: 9999px;
+  /* Keep the top half only. The label is centred in the full box, so the cut
+     lands on its middle at any size. */
+  clip-path: inset(0 0 50% 0);
+  pointer-events: none;
+}
