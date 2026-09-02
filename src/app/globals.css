@@ -8,7 +8,10 @@
      carried by the handle and the N's diagonal. Set them equal for
      single-colour use. */
   --logo-ink: var(--foreground);
-  --logo-accent: #8a2226;
+  /* Burnt orange, hue 14deg. The old #8a2226 measured hue 358 with green 4
+     BELOW blue — a red leaning crimson, which only read warm because white
+     behind it flatters it. 5.79:1 on white. */
+  --logo-accent: #a8482a;
 }
 
 @theme inline {
@@ -22,9 +25,12 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
-    /* The accent has to lift on a dark ground: #8a2226 measures 2.0:1 there,
-       #b23a44 measures 6.2:1. */
-    --logo-accent: #b23a44;
+    /* Lifted for a dark ground, WITHOUT drifting hue. The previous #b23a44
+       measured hue 355 with green 10 below blue: lifting it for contrast had
+       quietly walked it into crimson, so the mark changed colour between
+       themes. This is hue 20 to the light value's 14 — the same colour, lighter
+       — and 5.03:1 on #0a0a0a. */
+    --logo-accent: #c2683a;
   }
 }
 

@@ -21,9 +21,9 @@
     small-size cut.
   -->
   <style>
-    :root { --ink: #141310; --accent: #8a2226; }
+    :root { --ink: #141310; --accent: #a8482a; }
     @media (prefers-color-scheme: dark) {
-      :root { --ink: #ededed; --accent: #b23a44; }
+      :root { --ink: #ededed; --accent: #c2683a; }
     }
   </style>
   <path fill="var(--accent)" d="M80,-55 A307.5,307.5 0 0 1 695,-55 L610,-55 A222.5,222.5 0 0 0 165,-55 Z" />
