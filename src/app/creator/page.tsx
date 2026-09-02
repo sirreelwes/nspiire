@@ -291,64 +291,80 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
                     </span>
                   </div>
 
-                  {o.rationale && (
-                    <p className="mt-2 text-base leading-snug text-neutral-600 dark:text-neutral-300">
-                      {o.rationale}
-                    </p>
-                  )}
-                  {o.evidence && (
-                    <p className="mt-2 text-sm leading-snug text-neutral-500">
-                      <span className="font-medium">Why them: </span>
-                      {o.evidence}
-                    </p>
-                  )}
+                  {/* One line, and only one. A shortlist you have to read four
+                      paragraphs of is a shortlist nobody decides on. Older
+                      opportunities predate Scout returning a summary, so the
+                      first sentence of the rationale stands in. */}
+                  <p className="mt-2 text-base leading-snug text-neutral-600 dark:text-neutral-300">
+                    {o.brand.summary ?? firstSentence(o.rationale)}
+                  </p>
 
-                  {/* What Iris would actually ask for. A creator approving
-                      outreach without seeing the number is approving a
-                      conversation whose terms they have not been told. */}
+                  {/* The ask stays visible: approving outreach without seeing
+                      the number means approving a conversation whose terms you
+                      were never told. Everything explaining that number — the
+                      rationale, the evidence, the range, the reasoning — sits
+                      behind one press, because a shortlist you have to read
+                      four paragraphs of is a shortlist nobody decides on. */}
                   {(() => {
                     const a = advice.get(o.id);
-                    if (!a) return null;
                     return (
-                      <div className="mt-4 rounded-xl border border-neutral-200 px-4 py-4 dark:border-neutral-800">
-                        <p className="text-sm font-medium uppercase tracking-wide text-neutral-400">
-                          What I&apos;d ask them for
-                        </p>
-                        {a.amountCents == null ? (
-                          <p className="mt-2 text-base text-neutral-500">
-                            I don&apos;t have enough to price this yet — add a
-                            rate for {o.suggestedFormat || "this format"} and
-                            I&apos;ll put a number on it.
-                          </p>
-                        ) : (
-                          <>
-                            <p className="mt-1 text-3xl font-semibold tabular-nums">
-                              {formatMoney(a.amountCents)}
-                            </p>
-                            <dl className="mt-3 grid grid-cols-2 gap-3 text-base sm:grid-cols-4">
-                              <Term
-                                label="Range"
-                                value={
-                                  a.lowCents != null && a.highCents != null
-                                    ? `${formatMoney(a.lowCents)}–${formatMoney(a.highCents)}`
-                                    : "—"
-                                }
-                              />
-                              <Term
-                                label="Your floor"
-                                value={a.floorCents != null ? formatMoney(a.floorCents) : "—"}
-                              />
-                              <Term label="They can run it" value={formatDays(windows.usageDays)} />
-                              <Term label="Exclusivity" value={formatDays(windows.exclusivityDays)} />
-                            </dl>
-                            {a.reasoning.length > 0 && (
-                              <p className="mt-3 text-sm leading-snug text-neutral-500">
-                                {a.reasoning.join(" ")}
-                              </p>
+                      <>
+                        {a && (
+                          <p className="mt-3 text-3xl font-semibold tabular-nums">
+                            {a.amountCents == null ? (
+                              <span className="text-base font-normal text-neutral-500">
+                                No rate set for {o.suggestedFormat || "this format"} yet.
+                              </span>
+                            ) : (
+                              formatMoney(a.amountCents)
                             )}
-                          </>
+                          </p>
                         )}
-                      </div>
+
+                        <details className="mt-3">
+                          <summary className="cursor-pointer text-base text-neutral-500 underline underline-offset-4">
+                            Why them, and how I got to that
+                          </summary>
+
+                          {o.rationale && (
+                            <p className="mt-3 text-base leading-snug text-neutral-600 dark:text-neutral-300">
+                              {o.rationale}
+                            </p>
+                          )}
+                          {o.evidence && (
+                            <p className="mt-2 text-sm leading-snug text-neutral-500">
+                              <span className="font-medium">Why them: </span>
+                              {o.evidence}
+                            </p>
+                          )}
+
+                          {a && a.amountCents != null && (
+                            <>
+                              <dl className="mt-4 grid grid-cols-2 gap-3 text-base sm:grid-cols-4">
+                                <Term
+                                  label="Range"
+                                  value={
+                                    a.lowCents != null && a.highCents != null
+                                      ? `${formatMoney(a.lowCents)}–${formatMoney(a.highCents)}`
+                                      : "—"
+                                  }
+                                />
+                                <Term
+                                  label="Your floor"
+                                  value={a.floorCents != null ? formatMoney(a.floorCents) : "—"}
+                                />
+                                <Term label="They can run it" value={formatDays(windows.usageDays)} />
+                                <Term label="Exclusivity" value={formatDays(windows.exclusivityDays)} />
+                              </dl>
+                              {a.reasoning.length > 0 && (
+                                <p className="mt-3 text-sm leading-snug text-neutral-500">
+                                  {a.reasoning.join(" ")}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </details>
+                      </>
                     );
                   })()}
 
@@ -432,6 +448,13 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
       )}
     </main>
   );
+}
+
+/** First sentence, for opportunities sourced before Scout returned a summary. */
+function firstSentence(text: string | null): string {
+  if (!text) return "";
+  const cut = text.match(/^.*?[.!?](\s|$)/);
+  return (cut ? cut[0] : text).trim();
 }
 
 function Term({ label, value }: { label: string; value: string }) {

@@ -20,6 +20,9 @@ import { formatCount, formatRate } from "@/lib/creators/metrics";
 export const ScoredOpportunitySchema = z.object({
   brandName: z.string(),
   category: z.string(),
+  /** One line on what the company IS — not why they fit. The only prose on a
+   *  collapsed card, so a creator can skim a shortlist. */
+  summary: z.string(),
   /** 0-1. How well this brand fits THIS creator, not how big the brand is. */
   fitScore: z.number().min(0).max(1),
   /** Why, in one or two sentences a creator would actually find useful. */
@@ -70,6 +73,7 @@ Rules:
 - Only suggest formats that appear in the creator's offered formats.
 - Do not invent contact names or email addresses. "evidence" must be something a human could go and check — a named creator-sponsorship the brand has run, an affiliate or ambassador programme, a category norm — not a guess dressed up as a fact.
 - If you are unsure a brand actually sponsors creators, say so in the evidence rather than asserting it.
+- "summary" is one short line on what the company IS, in plain words, as you would say it to someone who has never heard of them. Under 12 words. No pitch, no fit reasoning, no adjectives like "leading" or "innovative" — that belongs in "rationale".
 - fitScore is about fit for THIS creator. Reserve above 0.8 for brands you would bet on.
 - Prefer brands the creator could realistically reach now over aspirational household names.
 - Return exactly the number asked for in "howMany". Fewer is better than padding the list with brands you do not believe in.`;

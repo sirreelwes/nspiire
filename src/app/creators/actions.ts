@@ -120,10 +120,13 @@ export async function findBrandPartners(form: FormData) {
   for (const o of result.output) {
     const brand = await prisma.brand.upsert({
       where: { name: o.brandName },
-      update: {},
+      // Fill in a summary for brands Scout met before it produced them,
+      // without overwriting one that is already there.
+      update: { summary: o.summary || undefined },
       create: {
         name: o.brandName,
         category: o.category || null,
+        summary: o.summary || null,
         sponsorSignals: { evidence: o.evidence, sourcedBy: "scout" },
       },
     });

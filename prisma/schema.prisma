@@ -97,6 +97,10 @@ model Brand {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   accounts      BrandAccount[]
+  /// One line on what the company IS — not why they fit. Shown on the card
+  /// before anything is expanded, so a creator can skim a shortlist without
+  /// reading four paragraphs.
+  summary       String?
 }
 
 model Contact {
