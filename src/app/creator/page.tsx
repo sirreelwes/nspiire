@@ -427,7 +427,7 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
                       <form action={creatorPreviewOutreach}>
                         <input type="hidden" name="opportunityId" value={o.id} />
                         <button type="submit" className={arch("primary", "md")}>
-                          Write the email
+                          Pursue this deal
                         </button>
                       </form>
                       <form action={creatorDeclineOutreach}>
