@@ -50,7 +50,7 @@ export function IrisAvatar({
         <path d="M40 68L30 96h7l6-20z" fill="#2e2a27" />
         <path d="M56 68l10 28h-7l-6-20z" fill="#2e2a27" />
         {/* the accent, as a collar detail */}
-        <path d="M48 81l-5-8 5-2 5 2z" fill="var(--logo-accent, #a8482a)" />
+        <path d="M48 81l-5-8 5-2 5 2z" fill="var(--logo-accent, #bf5700)" />
         {/* neck */}
         <path d="M41 55h14v13l-7 5-7-5z" fill="#d9b294" />
         {/* face */}
@@ -77,7 +77,7 @@ export function IrisAvatar({
         cy="48"
         r="45"
         fill="none"
-        stroke="var(--logo-accent, #a8482a)"
+        stroke="var(--logo-accent, #bf5700)"
         strokeWidth="2"
       />
     </svg>

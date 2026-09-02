@@ -48,7 +48,7 @@
      touches the two uprights; that is what lets them read as two separate
      strokes. Depends on line-height: 1. */
   bottom: 0.9075em;
-  border: 0.085em solid var(--logo-accent, #a8482a);
+  border: 0.085em solid var(--logo-accent, #bf5700);
   border-bottom: none;
 }
 
@@ -88,8 +88,8 @@
     var(--logo-ink, #141310) 0.165em,
     transparent 0.165em,
     transparent 0.22em,
-    var(--logo-accent, #a8482a) 0.22em,
-    var(--logo-accent, #a8482a) 0.555em,
+    var(--logo-accent, #bf5700) 0.22em,
+    var(--logo-accent, #bf5700) 0.555em,
     transparent 0.555em,
     transparent 0.61em,
     var(--logo-ink, #141310) 0.61em
