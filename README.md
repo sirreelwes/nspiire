@@ -32,6 +32,7 @@ src/lib/deals/brandAccess.ts    the brand's capability URL, and the single
 src/lib/email/                  outbound email (Resend) + the CAN-SPAM wrapper
 src/app/b/[token]/              the brand deal room — public, no login
 src/app/inquiries/              the front door — public inquiry form
+src/app/inbox/                  the operator's triage queue for what arrives
 src/lib/inquiries/schema.ts     its validation and abuse defences
 src/lib/agents/             the virtual agent roster
   types.ts                  guardrails, approval policy, shared contracts
@@ -190,8 +191,30 @@ The submitter's IP is never stored. Rate limiting needs to recognise a repeat
 submitter, which a salted hash does — salted, because the IPv4 space is small
 enough that a bare SHA-256 is reversible with a wordlist and an afternoon.
 
-New inquiries surface at the top of the dashboard. Nothing auto-replies to
-them; that is still a person's job.
+New inquiries surface on the dashboard and are worked at **`/inbox`** — note
+the different path. The public form owns `/inquiries`, and the proxy matches its
+public set exactly, so putting the queue under that prefix would have been one
+typo away from serving every name, email and message ever sent to the internet.
+
+A brand inquiry converts to a deal in one click: it upserts the Brand, records
+the person who wrote in as a Contact (a real one, not one Scout guessed), opens
+a Deal at PITCHED on the house standard terms, and marks the inquiry converted.
+
+The step that matters is the last one — **their message is written onto the deal
+as an inbound brand interaction.** `writeToBrand()` decides between an opening
+pitch and a reply by whether the brand thread is empty, so seeding it means Iris
+answers the person who wrote in. An inbound brand must never receive a
+first-contact email.
+
+Two things it deliberately does not do. It sets no rate: a budget band is not an
+offer, so the deal opens unpriced and the advisor prices it. And it refuses to
+convert a brand that previously opted out — writing in is a strong signal they
+changed their mind, but it may be a different person at the same company, so
+reinstating takes a deliberate click by a human who has read the message.
+
+Creator inquiries don't convert. Onboarding needs a rate card, guardrails and
+socials that nobody has typed, and inventing them from a paragraph would be
+worse than doing it by hand.
 
 The home page used to point at `/onboarding` and `/dashboard`. Both were
 operator-only, so the marketing page was advertising the agency console and its

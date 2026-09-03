@@ -45,7 +45,8 @@ async function load() {
       prisma.inquiry.findMany({
         where: { status: "NEW" },
         orderBy: { createdAt: "desc" },
-        take: 10,
+        select: { id: true, name: true, company: true },
+        take: 25,
       }),
     ]);
     const counts: Counts = {};
@@ -76,6 +77,9 @@ export default async function DashboardPage() {
         <nav className="flex flex-wrap gap-3">
           <Link href="/creators" className={NAV_BUTTON}>
             Creators
+          </Link>
+          <Link href="/inbox" className={NAV_BUTTON}>
+            Inbox
           </Link>
           <Link href="/deals" className={NAV_BUTTON}>
             All deals
@@ -135,39 +139,28 @@ export default async function DashboardPage() {
 
       {data.ready && data.inquiries.length > 0 && (
         <section className="mt-12">
-          <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
-            Inquiries — {data.inquiries.length} unread
-          </h2>
-          <ul className="mt-4 divide-y divide-neutral-200 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
-            {data.inquiries.map((i) => (
-              <li key={i.id} className="px-5 py-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-medium">
-                    {i.name}
-                    {i.company ? ` · ${i.company}` : ""}
-                    <span className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-[11px] uppercase tracking-wide text-neutral-500 dark:border-neutral-700">
-                      {i.kind === "CREATOR" ? "creator" : "brand"}
-                    </span>
-                  </span>
-                  <span className="text-sm text-neutral-500">
-                    {i.budgetBand ? `${i.budgetBand} · ` : ""}
-                    {new Intl.DateTimeFormat("en-GB", {
-                      dateStyle: "medium",
-                      timeZone: "UTC",
-                    }).format(i.createdAt)}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-neutral-500">{i.email}</p>
-                <p className="mt-2 whitespace-pre-wrap text-base text-neutral-700 dark:text-neutral-300">
-                  {i.message}
-                </p>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-sm text-neutral-500">
-            Written in from the public form. Nothing has replied to these — that
-            is still a person&apos;s job.
-          </p>
+          <Link
+            href="/inbox"
+            className="flex flex-wrap items-baseline justify-between gap-3 rounded-xl border border-neutral-200 px-5 py-5 dark:border-neutral-800"
+          >
+            <span className="text-base">
+              <span className="text-3xl font-semibold tabular-nums">
+                {data.inquiries.length}
+              </span>
+              <span className="ml-3 text-neutral-500">
+                unread{" "}
+                {data.inquiries.length === 1 ? "inquiry" : "inquiries"} from the
+                site
+              </span>
+            </span>
+            <span className="text-base text-neutral-500">
+              {data.inquiries
+                .slice(0, 3)
+                .map((i) => i.company || i.name)
+                .join(", ")}
+              {data.inquiries.length > 3 ? "…" : ""} →
+            </span>
+          </Link>
         </section>
       )}
 
