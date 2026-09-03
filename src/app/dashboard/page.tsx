@@ -32,7 +32,7 @@ const NAV_BUTTON_PRIMARY = arch("primary", "md");
 async function load() {
   if (!hasDatabase) return { ready: false as const };
   try {
-    const [grouped, creatorCount, recent] = await Promise.all([
+    const [grouped, creatorCount, recent, inquiries] = await Promise.all([
       prisma.deal.groupBy({ by: ["state"], _count: { _all: true } }),
       prisma.creator.count(),
       prisma.deal.findMany({
@@ -40,10 +40,17 @@ async function load() {
         take: 8,
         include: { brand: true, creator: true },
       }),
+      // Unread inbound. Surfaced first on this page because it is the only
+      // queue where the clock started on someone else's side.
+      prisma.inquiry.findMany({
+        where: { status: "NEW" },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
     ]);
     const counts: Counts = {};
     for (const g of grouped) counts[g.state as DealState] = g._count._all;
-    return { ready: true as const, counts, creatorCount, recent };
+    return { ready: true as const, counts, creatorCount, recent, inquiries };
   } catch {
     // Schema not migrated yet, or the database is unreachable. Say so rather
     // than 500 — this page is the first thing you open during setup.
@@ -125,6 +132,44 @@ export default async function DashboardPage() {
           is what the terms advisor learns from.
         </p>
       </section>
+
+      {data.ready && data.inquiries.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
+            Inquiries — {data.inquiries.length} unread
+          </h2>
+          <ul className="mt-4 divide-y divide-neutral-200 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+            {data.inquiries.map((i) => (
+              <li key={i.id} className="px-5 py-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-medium">
+                    {i.name}
+                    {i.company ? ` · ${i.company}` : ""}
+                    <span className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-[11px] uppercase tracking-wide text-neutral-500 dark:border-neutral-700">
+                      {i.kind === "CREATOR" ? "creator" : "brand"}
+                    </span>
+                  </span>
+                  <span className="text-sm text-neutral-500">
+                    {i.budgetBand ? `${i.budgetBand} · ` : ""}
+                    {new Intl.DateTimeFormat("en-GB", {
+                      dateStyle: "medium",
+                      timeZone: "UTC",
+                    }).format(i.createdAt)}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-neutral-500">{i.email}</p>
+                <p className="mt-2 whitespace-pre-wrap text-base text-neutral-700 dark:text-neutral-300">
+                  {i.message}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-sm text-neutral-500">
+            Written in from the public form. Nothing has replied to these — that
+            is still a person&apos;s job.
+          </p>
+        </section>
+      )}
 
       <section className="mt-12 grid gap-8 lg:grid-cols-2">
         <div>

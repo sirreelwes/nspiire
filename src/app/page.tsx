@@ -31,19 +31,22 @@ export default function Home() {
         This is a big deal.
       </p>
 
-      {/* Full-width on a phone so they are thumb targets, not links. */}
+      {/* Both CTAs go somewhere a stranger can actually use.
+          These used to be "Set up your agent" -> /onboarding and
+          "Dashboard" -> /dashboard, which were both operator-only: the
+          marketing page was advertising the agency console, and a creator who
+          clicked the primary button hit a password prompt they had no way to
+          satisfy. Operator entry now lives in the footer, unstyled, because
+          whoever needs it knows the URL. */}
       <div className="mt-10 flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
-        <Link
-          href="/onboarding"
-          className={arch("primary", "lg")}
-        >
-          Set up your agent
+        <Link href="/inquiries" className={arch("primary", "lg")}>
+          Work with a creator
         </Link>
         <Link
-          href="/dashboard"
+          href="/inquiries?as=creator"
           className={arch("secondary", "lg")}
         >
-          Dashboard
+          I&apos;m a creator
         </Link>
       </div>
 
@@ -81,6 +84,12 @@ export default function Home() {
         <span className="px-2">·</span>
         <Link href="/privacy" className="underline underline-offset-4">
           Privacy
+        </Link>
+        <span className="px-2">·</span>
+        {/* Operator entry, deliberately small and last. The console is not a
+            thing to advertise; this is here so it's reachable, not promoted. */}
+        <Link href="/login" className="underline underline-offset-4">
+          Operator sign in
         </Link>
         <p className="mt-4 text-xs text-neutral-400">
           VerMar Design LLC

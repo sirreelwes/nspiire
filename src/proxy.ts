@@ -15,6 +15,9 @@ import type { NextRequest } from "next/server";
  *   /login         obviously
  *   /terms         TikTok's review needs both of these reachable without
  *   /privacy       auth; gating them would fail the app submission
+ *   /inquiries     the front door — a brand or a creator writing in. The only
+ *                  unauthenticated write anyone can reach without a token, so
+ *                  its abuse defences live in lib/inquiries/schema.ts
  *   /api/tiktok/callback   TikTok redirects the user here after consent, so it
  *                          cannot require a session. It is protected instead by
  *                          the CSRF state cookie it already checks.
@@ -30,6 +33,7 @@ const PUBLIC_PATHS = new Set([
   "/terms",
   "/privacy",
   "/api/tiktok/callback",
+  "/inquiries",
 ]);
 
 export function proxy(request: NextRequest) {

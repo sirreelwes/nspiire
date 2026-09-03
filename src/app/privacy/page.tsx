@@ -51,6 +51,13 @@ export default function PrivacyPage() {
           comment, message, or take any other action on your account — the access
           we request is read-only.
         </p>
+        <p>
+          <strong className="font-medium">What you send through the inquiry
+          form.</strong> Your name, email, the company or handle you give, and
+          your message. Alongside it we store a salted, one-way hash of your IP
+          address — used only to stop the form being flooded, and never the
+          address itself.
+        </p>
       </Section>
 
       <Section heading="Why we collect it">

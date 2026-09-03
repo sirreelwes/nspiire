@@ -31,6 +31,8 @@ src/lib/deals/brandAccess.ts    the brand's capability URL, and the single
                                 definition of what it grants
 src/lib/email/                  outbound email (Resend) + the CAN-SPAM wrapper
 src/app/b/[token]/              the brand deal room — public, no login
+src/app/inquiries/              the front door — public inquiry form
+src/lib/inquiries/schema.ts     its validation and abuse defences
 src/lib/agents/             the virtual agent roster
   types.ts                  guardrails, approval policy, shared contracts
   claude.ts                 Claude client helper
@@ -165,6 +167,36 @@ so a dodge is visible rather than buried.
 
 The two threads are separate rows (`Interaction.audience`) and are never
 replayed into each other — the creator's thread is full of floor-rate talk.
+
+## The front door
+
+Until now every brand entered the system outbound: Scout sourced them, or an
+operator typed the name. `/inquiries` is the other direction — a brand who
+finds Nspiire and wants to book a creator, or a creator asking to be
+represented. One form, one table, two lanes.
+
+**No roster on the page.** A brand describes who they're after in free text;
+they don't pick from a list. Who Nspiire represents belongs to the creators,
+not the marketing site.
+
+It is the only unauthenticated write anyone can reach without a token — the
+deal room is public but needs 32 bytes of secret to reach — so it carries its
+own defences: a honeypot, a per-address rate limit counted in the database
+(serverless memory resets, so an in-process counter would be theatre), and hard
+length caps. The honeypot and the rate limit both return the **success** screen;
+telling a bot it was caught only tells its author what to change.
+
+The submitter's IP is never stored. Rate limiting needs to recognise a repeat
+submitter, which a salted hash does — salted, because the IPv4 space is small
+enough that a bare SHA-256 is reversible with a wordlist and an afternoon.
+
+New inquiries surface at the top of the dashboard. Nothing auto-replies to
+them; that is still a person's job.
+
+The home page used to point at `/onboarding` and `/dashboard`. Both were
+operator-only, so the marketing page was advertising the agency console and its
+primary CTA sent creators to a password prompt they could not satisfy. Both CTAs
+now go to `/inquiries`; operator entry is a small link in the footer.
 
 ## How a brand hears from us
 

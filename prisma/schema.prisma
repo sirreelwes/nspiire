@@ -376,6 +376,51 @@ enum InvoiceStatus {
   VOID
 }
 
+// Someone writing in from the public site — the only way into this system that
+// nobody here initiated. Everything else (Scout sourcing, an operator typing a
+// name) starts on our side; this starts on theirs, which is why it is a
+// separate table and not an Opportunity: an Opportunity is a scored lead for a
+// specific creator, and an inquiry has been triaged by nobody.
+model Inquiry {
+  id        String        @id @default(cuid())
+  kind      InquiryKind   @default(BRAND)
+  name      String
+  email     String
+  /// Their company, or a creator's handle. Optional — plenty of first emails
+  /// don't say.
+  company   String?
+  /// Free text. For a brand this is "which creator, or what kind" plus budget
+  /// and timing — deliberately not a roster picker, because the roster is not
+  /// public.
+  message   String
+  /// Rough budget, when they volunteer one. Never treated as an offer.
+  budgetBand String?
+  status    InquiryStatus @default(NEW)
+  /// Operator triage notes. Not visible to the person who wrote in.
+  notes     String?
+  /// Salted hash of the submitter's IP, kept only to rate-limit the form. The
+  /// address itself is never stored — see lib/inquiries/schema.ts.
+  ipHash    String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([ipHash, createdAt])
+}
+
+enum InquiryKind {
+  BRAND
+  CREATOR
+}
+
+enum InquiryStatus {
+  NEW
+  TRIAGED   // read, worth pursuing
+  CONVERTED // became a real brand/creator record
+  SPAM
+  CLOSED
+}
+
 // Anonymized closed-deal terms — the P4 moat. Written on PAID transition.
 model TermsBenchmark {
   id            String   @id @default(cuid())
