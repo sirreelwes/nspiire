@@ -33,21 +33,21 @@ export default function Home() {
 
       {/* Full-width on a phone so they are thumb targets, not links. */}
       <div className="mt-10 flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
-        {/* Creators are who lands here, so the primary action is THEIR sign-in.
-            "Set up your agent" used to point at /onboarding, which is
-            operator-gated — a creator clicking it hit Wes's login. Nspiire is
-            invite-only, so there is no self-signup to offer yet. */}
+        {/* The two audiences this page actually has. The operator console used
+            to sit here, which gave a one-person internal login equal billing
+            with the product — and told every visitor where the back door is.
+            It lives at /login and is bookmarked, not advertised. */}
         <Link
           href="/creator/login"
           className={arch("primary", "lg")}
         >
-          Sign in
+          Creator sign in
         </Link>
         <Link
-          href="/login"
+          href="/brand/apply"
           className={arch("secondary", "lg")}
         >
-          Operator console
+          For brands
         </Link>
       </div>
 
@@ -79,10 +79,6 @@ export default function Home() {
       </section>
 
       <footer className="mt-20 w-full border-t border-neutral-200 pt-8 text-base text-neutral-500 dark:border-neutral-800">
-        <Link href="/brand/apply" className="underline underline-offset-4">
-          For brands
-        </Link>
-        <span className="px-2">·</span>
         <Link href="/terms" className="underline underline-offset-4">
           Terms
         </Link>
