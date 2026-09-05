@@ -166,8 +166,8 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
                     <Field name="avgShares" label="Avg shares" defaultValue={metrics.avgShares} />
                   </div>
                   <p className={hint}>
-                    From her own TikTok analytics. Engagement rates are computed from
-                    these, not entered.
+                    From {creator.name.split(" ")[0]}&apos;s own TikTok analytics.
+                    Engagement rates are computed from these, not entered.
                   </p>
                   <button type="submit" className={`${ghostBtn} self-start`}>
                     Save metrics
@@ -230,9 +230,9 @@ export default async function CreatorPage(props: PageProps<"/creators/[id]">) {
               {creator.opportunities.length ? "Find more brands" : "Find brand partners"}
             </button>
             <p className={`${hint} mt-2`}>
-              Scout scores fit against her niche, size and engagement. Four at a
-              time — run it again for four more. Nothing reaches a brand until
-              the creator approves it in their own account.
+              Scout scores fit against {creator.name.split(" ")[0]}&apos;s niche,
+              size and engagement. Four at a time — run it again for four more.
+              Nothing reaches a brand until they approve it in their own account.
             </p>
           </form>
 

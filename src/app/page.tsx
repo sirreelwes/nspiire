@@ -2,19 +2,6 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { arch } from "@/components/Button";
 
-/** The happy path, in order — the shape of the thing the agent runs. */
-const PIPELINE = [
-  "Pitched",
-  "Negotiating",
-  "Terms agreed",
-  "Contract sent",
-  "Signed",
-  "In production",
-  "Delivered",
-  "Invoiced",
-  "Paid",
-] as const;
-
 /**
  * Built mobile-first: nearly every creator arrives on a phone. The wordmark
  * spans the screen, actions are full-width thumb targets, and everything is
@@ -58,23 +45,13 @@ export default function Home() {
         style={{ background: "var(--logo-accent)" }}
       />
 
-      <section className="mt-16 w-full">
-        <h2 className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-400">
-          Deal pipeline
-        </h2>
-        <ol className="mt-5 flex flex-wrap justify-center gap-2">
-          {PIPELINE.map((stage) => (
-            <li
-              key={stage}
-              className="rounded-full border border-neutral-300 px-4 py-2 text-base text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"
-            >
-              {stage}
-            </li>
-          ))}
-        </ol>
-        <p className="mt-8 text-lg leading-snug text-neutral-500">
-          Every move between these is logged. That log is what the terms advisor
-          learns from.
+      {/* What the product does, in the creator's terms — not the deal state
+          machine, which is the operator's business. */}
+      <section className="mt-16 w-full max-w-md">
+        <p className="text-lg leading-snug text-neutral-500">
+          Iris finds the brands, writes the pitch, holds the line on your
+          rate, and reads every contract. You approve every word before it
+          goes, and nothing moves without you.
         </p>
       </section>
 
