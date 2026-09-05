@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
-import { arch } from "@/components/Button";
+import { SubmitButton } from "@/components/SubmitButton";
 import { creatorSignIn } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -53,14 +53,14 @@ export default async function CreatorLoginPage(
             className={field}
           />
         </label>
-        <button type="submit" className={arch("primary", "md", "mt-2 w-full")}>
+        <SubmitButton pending="Signing in…" className="mt-2 w-full">
           Sign in
-        </button>
+        </SubmitButton>
       </form>
 
       <p className="mt-8 text-sm text-neutral-500">
-        No account yet? Nspiire is invite-only while we onboard our first
-        creators — your invite link comes from your manager.
+        No account yet? Nspiire is invite-only while we bring on our first
+        creators. Your invite link comes from us, by email.
       </p>
     </main>
   );

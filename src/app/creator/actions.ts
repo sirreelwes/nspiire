@@ -233,20 +233,31 @@ export async function creatorApproveOutreach(form: FormData): Promise<void> {
   redirect("/creator");
 }
 
-/** "No, don't." */
+/**
+ * "No, don't." Iris acknowledges it by name on the way back, so a card
+ * disappearing is a decision the creator made rather than something that
+ * happened to them. The name comes from the row, not the form.
+ */
 export async function creatorDeclineOutreach(form: FormData): Promise<void> {
   const creator = await requireCreator();
   const opportunityId = text(form, "opportunityId");
   if (!opportunityId) redirect("/creator");
 
-  await prisma.opportunity.updateMany({
+  const opp = await prisma.opportunity.findFirst({
     where: { id: opportunityId, creatorId: creator.id, status: "SOURCED" },
+    select: { id: true, brand: { select: { name: true } } },
+  });
+  if (!opp) redirect("/creator");
+
+  await prisma.opportunity.update({
+    where: { id: opp.id },
     data: { status: "REJECTED" },
   });
 
   revalidatePath("/creator");
   revalidatePath(`/creators/${creator.id}`);
-  redirect("/creator");
+  const skipped = opp.brand.name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  redirect(`/creator?skipped=${encodeURIComponent(skipped)}`);
 }
 
 /* ------------------------------------------------ approving the deal terms */

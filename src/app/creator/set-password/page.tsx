@@ -46,8 +46,8 @@ export default async function SetPasswordPage(
             This link is no longer valid
           </h1>
           <p className="mt-3 text-base leading-snug text-neutral-500">
-            Invite links last seven days and can only be used once. Ask your
-            manager for a new one.
+            Invite links last seven days and can only be used once. Reply to
+            the email it came in and we&apos;ll send another.
           </p>
           <Link href="/creator/login" className={arch("secondary", "md", "mt-8 self-start")}>
             Go to sign in

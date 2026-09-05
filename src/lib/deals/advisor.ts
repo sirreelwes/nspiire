@@ -28,6 +28,10 @@ export interface TermsAdvice {
   highCents: number | null;
   /** The creator's walk-away for this format, straight from their guardrails. */
   floorCents: number | null;
+  /** What the creator's own rate card says for this format, before any
+   *  adjustment. Null when the format isn't on it. Kept so the creator-facing
+   *  explanation can say "your card says X, I'd ask Y" without recomputing. */
+  rateCardCents: number | null;
   confidence: "high" | "medium" | "low";
   /** Plain sentences explaining every number above. Shown to the creator. */
   reasoning: string[];
@@ -124,6 +128,7 @@ export function proposeTerms(input: AdviceInput): TermsAdvice {
       lowCents: Math.min(...amounts),
       highCents: Math.max(...amounts),
       floorCents,
+      rateCardCents: lookup(input.rateCard, input.format),
       confidence: relevant.length >= 8 ? "high" : "medium",
       reasoning,
     };
@@ -146,6 +151,7 @@ export function proposeTerms(input: AdviceInput): TermsAdvice {
       lowCents: null,
       highCents: null,
       floorCents,
+      rateCardCents: null,
       confidence: "low",
       reasoning,
     };
@@ -170,6 +176,7 @@ export function proposeTerms(input: AdviceInput): TermsAdvice {
     lowCents: floorCents ?? Math.round(amountCents * 0.85),
     highCents: Math.round(amountCents * 1.2),
     floorCents,
+    rateCardCents: card,
     confidence: input.metrics.source === "tiktok-api" ? "medium" : "low",
     reasoning,
   };

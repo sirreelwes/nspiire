@@ -125,8 +125,10 @@ export function irisGreeting(input: {
   toSign: number;
   /** Brands who asked for this creator and are waiting on an answer. */
   toAnswer?: number;
+  /** The brand Iris would lead with, when there is a shortlist to lead. */
+  pick?: string | null;
 }): { lead: string; follow: string } {
-  const { firstName, toReview, toRead, toSign, toAnswer = 0 } = input;
+  const { firstName, toReview, toRead, toSign, toAnswer = 0, pick = null } = input;
   const n = (count: number, one: string, many: string) =>
     `${count} ${count === 1 ? one : many}`;
 
@@ -153,13 +155,17 @@ export function irisGreeting(input: {
     };
   }
 
+  // A shortlist with a recommendation on it. Twelve brands and "which ones
+  // look interesting?" is a spreadsheet; a manager says which one they'd do.
   if (toReview > 0) {
     return {
       lead: `Hi ${firstName}, I found ${n(toReview, "brand", "brands")} worth a look.`,
       follow:
         toReview === 1
           ? "Does it look interesting?"
-          : "Which ones look interesting?",
+          : pick
+            ? `If you only do one, start with ${pick}.`
+            : "Which ones look interesting?",
     };
   }
 

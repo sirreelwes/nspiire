@@ -1,4 +1,4 @@
-import { arch } from "@/components/Button";
+import { SubmitButton } from "@/components/SubmitButton";
 import { SUGGESTED_FORMATS } from "@/lib/creators/onboarding";
 import { completeCreatorProfile } from "./actions";
 
@@ -127,9 +127,9 @@ export function CreatorSetupForm({
           </span>
         </label>
 
-        <button type="submit" className={arch("primary", "md", "mt-2 self-start")}>
+        <SubmitButton pending="Saving…" className="mt-2 self-start">
           Save and see my dashboard
-        </button>
+        </SubmitButton>
       </form>
     </>
   );
