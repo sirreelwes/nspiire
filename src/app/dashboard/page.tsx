@@ -137,6 +137,7 @@ export default async function DashboardPage() {
                   <th className="px-5 py-3 font-medium">Avg views</th>
                   <th className="px-5 py-3 font-medium">Eng / views</th>
                   <th className="px-5 py-3 font-medium">Source</th>
+                  <th className="px-5 py-3 font-medium">On roster</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -174,6 +175,17 @@ export default async function DashboardPage() {
                           : m.source === "tiktok-api"
                             ? "TikTok"
                             : "By hand"}
+                      </td>
+                      <td className="px-5 py-4 text-sm">
+                        {/* Theirs to set, not the operator's. Shown here only
+                            so it is obvious who brands can actually find. */}
+                        {c.listedOnRoster ? (
+                          <span className="font-medium text-[var(--logo-accent)]">
+                            Listed
+                          </span>
+                        ) : (
+                          <span className="text-neutral-500">Not listed</span>
+                        )}
                       </td>
                     </tr>
                   );

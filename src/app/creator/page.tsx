@@ -21,6 +21,7 @@ import {
   creatorPreviewOutreach,
   creatorRequestTermsChanges,
   creatorSignOut,
+  setRosterListing,
 } from "./actions";
 import { arch } from "@/components/Button";
 import { CreatorSetupForm } from "./setup-form";
@@ -441,6 +442,61 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+      </section>
+
+      {/* Consent to being found. Named in full rather than summarised: a
+          creator agreeing to "be listed" without being told what is shown has
+          not agreed to anything in particular. What is NOT shown matters just
+          as much — the rate card is their negotiating position. */}
+      <section className="mt-12">
+        <h2 className="text-base font-medium uppercase tracking-wide text-neutral-400">
+          Being found by brands
+        </h2>
+
+        <div className="mt-4 rounded-xl border border-neutral-200 px-5 py-5 dark:border-neutral-800">
+          <p className="text-base leading-snug text-neutral-600 dark:text-neutral-300">
+            {creator.listedOnRoster
+              ? "Brands on Nspiire can see you and ask to work with you. They still can't reach you until you accept."
+              : "You're not on the roster. Brands can't see you or ask for you."}
+          </p>
+
+          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="font-medium">What they&apos;d see</dt>
+              <dd className="mt-1 leading-snug text-neutral-500">
+                Your name, your handle, your niche, your follower count, your
+                average views and engagement, and how many posts that&apos;s
+                measured over.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">What they&apos;d never see</dt>
+              <dd className="mt-1 leading-snug text-neutral-500">
+                Your rates, your floor, your email, or anything about deals
+                you&apos;ve done. Your price is something I quote, not something
+                they look up.
+              </dd>
+            </div>
+          </dl>
+
+          <form action={setRosterListing} className="mt-5">
+            <input
+              type="hidden"
+              name="listed"
+              value={creator.listedOnRoster ? "off" : "on"}
+            />
+            <button type="submit" className={arch(creator.listedOnRoster ? "secondary" : "primary", "md")}>
+              {creator.listedOnRoster ? "Take me off the roster" : "Put me on the roster"}
+            </button>
+          </form>
+
+          {creator.listedOnRoster && (
+            <p className="mt-3 text-sm text-neutral-500">
+              Coming off stops new brands finding you. Conversations you&apos;ve
+              already accepted carry on.
+            </p>
           )}
         </div>
       </section>

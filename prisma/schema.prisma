@@ -31,6 +31,14 @@ model Creator {
   opportunities Opportunity[]
   brandInterest BrandInterest[]
 
+  /// Whether this creator appears on the roster brands browse.
+  ///
+  /// Defaults to FALSE and stays false until the creator says otherwise. Every
+  /// creator who existed before this column was added is therefore unlisted,
+  /// which is the correct answer: they were never asked. An opt-out default
+  /// would have silently published them.
+  listedOnRoster Boolean @default(false)
+
   // --- Creator sign-in ---
   // The creator's own login, separate from the operator password. `email` above
   // is the identity, so there is no second copy of it to drift.

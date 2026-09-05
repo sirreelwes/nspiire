@@ -26,9 +26,14 @@ export default async function RosterPage() {
 
   const [creators, interests] = await Promise.all([
     prisma.creator.findMany({
-      // Only creators with a usable profile. A half-set-up account is not a
-      // pitch, and listing one wastes everybody's time.
-      where: { niche: { not: null }, socials: { some: {} } },
+      // Consent first, completeness second. listedOnRoster is the creator
+      // saying brands may find them; the rest is that a half-set-up account is
+      // not a pitch and listing one wastes everybody's time.
+      where: {
+        listedOnRoster: true,
+        niche: { not: null },
+        socials: { some: {} },
+      },
       include: { socials: true },
       orderBy: { name: "asc" },
     }),

@@ -427,3 +427,31 @@ export async function creatorAcceptBrand(form: FormData): Promise<void> {
 export async function creatorDeclineBrand(form: FormData): Promise<void> {
   await answerInterest(form, "DECLINED");
 }
+
+/* -------------------------------------------------- being found by brands */
+
+/**
+ * The creator's consent to appearing on the roster brands browse.
+ *
+ * Off until they turn it on. Nobody is listed by default and nobody was listed
+ * retroactively — the column defaults to false precisely so the creators who
+ * existed before it did were not silently published to paying brands.
+ *
+ * Turning it off stops new brands finding them. It does not withdraw
+ * conversations already accepted: those were separately consented to, and
+ * yanking them would break a commitment the creator made.
+ */
+export async function setRosterListing(form: FormData): Promise<void> {
+  const creator = await requireCreator();
+  const listed = form.get("listed") === "on";
+
+  await prisma.creator.update({
+    where: { id: creator.id },
+    data: { listedOnRoster: listed },
+  });
+
+  revalidatePath("/creator");
+  revalidatePath("/brand/roster");
+  revalidatePath("/dashboard");
+  redirect("/creator");
+}
