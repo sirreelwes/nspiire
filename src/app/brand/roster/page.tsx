@@ -61,8 +61,9 @@ export default async function RosterPage() {
         The roster
       </h1>
       <p className="mt-3 text-base leading-snug text-neutral-500">
-        Tell me who interests you and I&apos;ll pass it on. They decide whether
-        to open a conversation — nothing reaches them until they say yes.
+        {account.kind === "ARTIST"
+          ? "Tell me whose videos your song belongs in and I'll pass it on. They decide whether to open a conversation, and nothing reaches them until they say yes."
+          : "Tell me who interests you and I'll pass it on. They decide whether to open a conversation — nothing reaches them until they say yes."}
       </p>
 
       <ul className="mt-8 flex flex-col gap-4">
@@ -133,7 +134,11 @@ export default async function RosterPage() {
                   <input type="hidden" name="creatorId" value={c.id} />
                   <input
                     name="note"
-                    placeholder="What have you got in mind? (optional)"
+                    placeholder={
+                      account.kind === "ARTIST"
+                        ? "Anything about the song or the video? (optional)"
+                        : "What have you got in mind? (optional)"
+                    }
                     className="rounded-xl border border-neutral-300 px-4 py-3 text-base dark:border-neutral-700 dark:bg-neutral-900"
                   />
                   <button type="submit" className={arch("primary", "md", "self-start")}>

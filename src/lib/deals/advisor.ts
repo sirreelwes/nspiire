@@ -1,5 +1,7 @@
 import type { AudienceMetrics } from "@/lib/creators/metrics";
 import { formatMoney } from "@/lib/deals/terms";
+import { marketRate } from "./marketRates";
+import { followerBand } from "./stateMachine";
 
 /**
  * The deal-terms advisor — what a deal should be worth.
@@ -10,14 +12,17 @@ import { formatMoney } from "@/lib/deals/terms";
  * figure would go into a real negotiation about real money. Claude's judgement
  * is used elsewhere in this product; the price is not one of those places.
  *
- * Three bases, in descending order of trust:
+ * Four bases, in descending order of trust:
  *   1. benchmarks — closed deals for this niche/platform/band/format. The moat.
  *   2. rate-card  — what the creator says they charge, nudged by how their
  *                   engagement compares with the band it was priced against.
- *   3. none       — say so. An unsourced number is worse than no number.
+ *   3. market     — a published rate table for the format at this follower
+ *                   band (lib/deals/marketRates.ts). Sourced, but not to this
+ *                   creator, so it is labelled as the going rate, not a quote.
+ *   4. none       — say so. An unsourced number is worse than no number.
  */
 
-export type AdviceBasis = "benchmarks" | "rate-card" | "none";
+export type AdviceBasis = "benchmarks" | "rate-card" | "market" | "none";
 
 export interface TermsAdvice {
   basis: AdviceBasis;
@@ -51,6 +56,8 @@ export interface AdviceInput {
   metrics: AudienceMetrics;
   /** Closed-deal benchmarks already narrowed to this niche/platform/band. */
   benchmarks?: BenchmarkRow[];
+  /** Follower count on the primary account, for the market-rate band. */
+  followerCount?: number | null;
 }
 
 /** Case-insensitive lookup — rate-card keys are typed by the creator. */
@@ -141,6 +148,27 @@ export function proposeTerms(input: AdviceInput): TermsAdvice {
 
   // 2. The creator's own rate card.
   const card = lookup(input.rateCard, input.format);
+
+  // 3. A published rate table. Only when the creator has said nothing about
+  // this format themselves — their own number always wins over the market's.
+  const market = card == null ? marketRate(input.format, input.followerCount ?? null) : null;
+  if (card == null && market) {
+    const amountCents = floorCents != null ? Math.max(market.askCents, floorCents) : market.askCents;
+    reasoning.push(
+      `No rate card for ${input.format}. ${market.source}: creators at ${followerBand(input.followerCount ?? 0)} followers get ${formatMoney(market.lowCents)}–${formatMoney(market.highCents)} a video, so opening at ${formatMoney(amountCents)}.`,
+    );
+    return {
+      basis: "market",
+      amountCents,
+      lowCents: market.lowCents,
+      highCents: market.highCents,
+      floorCents,
+      rateCardCents: null,
+      confidence: "low",
+      reasoning,
+    };
+  }
+
   if (card == null) {
     reasoning.push(
       `"${input.format}" isn't on the rate card and no closed deals match it, so there's nothing to price from. Add it to the rate card first.`,

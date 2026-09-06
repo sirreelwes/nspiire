@@ -29,7 +29,11 @@ export function adviceForCreator(
 
   const amount = formatMoney(a.amountCents);
 
-  if (a.basis === "benchmarks" && a.lowCents != null && a.highCents != null) {
+  if (a.basis === "market" && a.lowCents != null && a.highCents != null) {
+    out.push(
+      `You haven't set a rate for ${format}, so this is the going rate: creators your size get ${formatMoney(a.lowCents)} to ${formatMoney(a.highCents)} a video, and I'd open at ${amount}. Set your own rate and I'll use that instead.`,
+    );
+  } else if (a.basis === "benchmarks" && a.lowCents != null && a.highCents != null) {
     out.push(
       `Creators like you have closed ${format} deals between ${formatMoney(a.lowCents)} and ${formatMoney(a.highCents)}, so I'd open at ${amount}.`,
     );

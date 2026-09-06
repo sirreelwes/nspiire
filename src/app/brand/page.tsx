@@ -74,8 +74,10 @@ export default async function BrandHomePage() {
             <p>
               Hi {account.contactName.split(" ")[0]}, you&apos;re on the list.{" "}
               <span className="text-neutral-500">
-                I&apos;ll come to you at {account.email} when I have a creator
-                who fits what you described.
+                I&apos;ll come to you at {account.email} when I have{" "}
+                {account.kind === "ARTIST"
+                  ? "creators whose videos fit the song."
+                  : "a creator who fits what you described."}
               </span>
             </p>
           </IrisGreeting>
@@ -90,10 +92,40 @@ export default async function BrandHomePage() {
                 {account.appliedAt.toISOString().slice(0, 10)}
               </dd>
             </div>
+            {account.trackUrl && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm text-neutral-500">The song</dt>
+                <dd className="mt-1 break-all">
+                  <a href={account.trackUrl} className="underline underline-offset-4" rel="noreferrer">
+                    {account.trackUrl}
+                  </a>
+                </dd>
+              </div>
+            )}
+            {account.mood && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm text-neutral-500">The feeling</dt>
+                <dd className="mt-1">{account.mood}</dd>
+              </div>
+            )}
             {account.lookingFor && (
               <div className="sm:col-span-2">
-                <dt className="text-sm text-neutral-500">Looking for</dt>
+                <dt className="text-sm text-neutral-500">
+                  {account.kind === "ARTIST" ? "Who should use it" : "Looking for"}
+                </dt>
                 <dd className="mt-1">{account.lookingFor}</dd>
+              </div>
+            )}
+            {account.videosWanted != null && (
+              <div>
+                <dt className="text-sm text-neutral-500">Videos</dt>
+                <dd className="mt-1 font-medium">{account.videosWanted}</dd>
+              </div>
+            )}
+            {account.postingWindow && (
+              <div>
+                <dt className="text-sm text-neutral-500">Posting window</dt>
+                <dd className="mt-1 font-medium">{account.postingWindow}</dd>
               </div>
             )}
             {account.budgetRange && (

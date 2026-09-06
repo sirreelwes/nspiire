@@ -38,6 +38,10 @@ async function setSession(id: string) {
 }
 
 export async function brandApply(form: FormData): Promise<void> {
+  // Which door they came in by. Decides the brief fields and where errors go
+  // back to; everything else about the account is the same.
+  const kind = form.get("kind") === "ARTIST" ? "ARTIST" : "BRAND";
+  const back = kind === "ARTIST" ? "/artists" : "/brand/apply";
   const companyName = text(form, "companyName");
   const contactName = text(form, "contactName");
   const email = text(form, "email").toLowerCase();
@@ -47,16 +51,25 @@ export async function brandApply(form: FormData): Promise<void> {
   const timing = text(form, "timing").slice(0, 100);
   const password = form.get("password");
 
-  if (!companyName || !contactName) redirect("/brand/apply?error=missing");
+  // The song brief. Free text, like the demand fields: it is what a manager
+  // actually sends — a link, a feeling, a window, a count.
+  const trackUrl = text(form, "trackUrl").slice(0, 500);
+  const mood = text(form, "mood").slice(0, 200);
+  const postingWindow = text(form, "postingWindow").slice(0, 100);
+  const videosRaw = Number(text(form, "videosWanted").replace(/[^0-9]/g, ""));
+  const videosWanted = Number.isFinite(videosRaw) && videosRaw > 0 ? Math.min(videosRaw, 10_000) : null;
+
+  if (!companyName || !contactName) redirect(`${back}?error=missing`);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    redirect("/brand/apply?error=email");
+    redirect(`${back}?error=email`);
   }
   if (typeof password !== "string" || password.length < MIN_PASSWORD) {
-    redirect("/brand/apply?error=short");
+    redirect(`${back}?error=short`);
   }
+  if (kind === "ARTIST" && !trackUrl) redirect(`${back}?error=track`);
 
   const existing = await prisma.brandAccount.findUnique({ where: { email } });
-  if (existing) redirect("/brand/apply?error=exists");
+  if (existing) redirect(`${back}?error=exists`);
 
   const account = await prisma.brandAccount.create({
     data: {
@@ -68,6 +81,11 @@ export async function brandApply(form: FormData): Promise<void> {
       lookingFor: lookingFor || null,
       budgetRange: budgetRange || null,
       timing: timing || null,
+      kind,
+      trackUrl: trackUrl || null,
+      mood: mood || null,
+      postingWindow: postingWindow || null,
+      videosWanted,
       // PENDING by default — on the list, not a member.
     },
   });

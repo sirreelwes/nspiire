@@ -46,6 +46,7 @@ export async function adviseForOpportunity(
     floorRates: guardrails.floorRatesCents,
     metrics,
     benchmarks,
+    followerCount: input.social?.followerCount ?? null,
   });
 }
 

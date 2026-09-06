@@ -342,6 +342,18 @@ model BrandAccount {
   budgetRange String?
   timing      String?
 
+  /// A brand wants a creator to talk about a product; an artist or label
+  /// wants creators to use a song. Same account, same consent rules, same
+  /// roster — different door, different brief, different deal shape.
+  kind AccountKind @default(BRAND)
+  /// The song brief, for ARTIST accounts. Free text on purpose, like the
+  /// demand fields above: the brief managers actually send is a sound link,
+  /// a one-line mood, a posting window and a count.
+  trackUrl      String?
+  mood          String?
+  postingWindow String?
+  videosWanted  Int?
+
   /// Dormant. Everyone joins an interest list today and nobody is charged;
   /// switching membership on later is a copy change plus Stripe, not a rebuild.
   membership   MembershipStatus @default(PENDING)
@@ -358,6 +370,11 @@ model BrandAccount {
   updatedAt DateTime @updatedAt
 
   @@index([membership])
+}
+
+enum AccountKind {
+  BRAND
+  ARTIST
 }
 
 enum MembershipStatus {

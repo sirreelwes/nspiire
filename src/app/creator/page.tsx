@@ -228,6 +228,25 @@ export default async function CreatorHomePage(props: PageProps<"/creator">) {
                     className="rounded-xl border border-neutral-200 px-5 py-5 dark:border-neutral-800"
                   >
                     <p className="text-lg font-medium">{i.brandAccount.companyName}</p>
+                    {i.brandAccount.kind === "ARTIST" && (
+                      <p className="mt-1 text-base leading-snug text-neutral-500">
+                        Wants you to use their song in one of your videos
+                        {i.brandAccount.mood ? ` — “${i.brandAccount.mood}”` : ""}.
+                        {i.brandAccount.trackUrl && (
+                          <>
+                            {" "}
+                            <a
+                              href={i.brandAccount.trackUrl}
+                              className="underline underline-offset-4"
+                              rel="noreferrer"
+                            >
+                              Listen
+                            </a>
+                          </>
+                        )}
+                        {i.brandAccount.postingWindow ? ` · ${i.brandAccount.postingWindow}` : ""}
+                      </p>
+                    )}
                     {i.note && (
                       <p className="mt-2 text-base leading-snug text-neutral-600 dark:text-neutral-300">
                         &ldquo;{i.note}&rdquo;

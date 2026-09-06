@@ -35,6 +35,9 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   OTHER: "Other",
 };
 
+/** The rate-card key for a sound placement, matched case-insensitively. */
+export const SOUND_PLACEMENT = "Sound placement";
+
 /** Starting points for the rate card — the creator can rename or add rows. */
 export const SUGGESTED_FORMATS = [
   "Dedicated video",
@@ -43,6 +46,10 @@ export const SUGGESTED_FORMATS = [
   "Feed post",
   "Reel / Short",
   "UGC (no post)",
+  // One normal post with an artist's song as the audio. The deal managers
+  // and labels buy by the wave; see lib/deals/marketRates.ts for the going
+  // rates by follower tier.
+  SOUND_PLACEMENT,
 ] as const;
 
 const SocialInput = z.object({

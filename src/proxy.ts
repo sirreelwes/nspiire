@@ -34,6 +34,8 @@ const PUBLIC_PATHS = new Set([
   // membership, not registration.
   "/brand/login",
   "/brand/apply",
+  // Artists and labels use the brand account model through their own door.
+  "/artists",
 ]);
 
 export function proxy(request: NextRequest) {

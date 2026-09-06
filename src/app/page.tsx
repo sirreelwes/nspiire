@@ -36,6 +36,12 @@ export default function Home() {
         >
           For brands
         </Link>
+        <Link
+          href="/artists"
+          className={arch("secondary", "lg")}
+        >
+          For artists
+        </Link>
       </div>
 
       {/* A hairline in the accent — the only colour on the page besides the

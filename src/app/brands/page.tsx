@@ -78,9 +78,25 @@ export default async function BrandsPage() {
               </span>
             </div>
             <p className="mt-1 text-base text-neutral-500">
+              {a.kind === "ARTIST" ? "Artist · " : ""}
               {a.contactName} · {a.email}
               {a.website ? ` · ${a.website}` : ""}
             </p>
+            {a.kind === "ARTIST" && (
+              <p className="mt-3 text-base leading-snug text-neutral-700 dark:text-neutral-300">
+                <span className="font-medium">The song: </span>
+                {a.trackUrl ? (
+                  <a href={a.trackUrl} className="underline underline-offset-4" rel="noreferrer">
+                    {a.trackUrl}
+                  </a>
+                ) : (
+                  "no link"
+                )}
+                {a.mood ? ` · “${a.mood}”` : ""}
+                {a.videosWanted != null ? ` · ${a.videosWanted} video${a.videosWanted === 1 ? "" : "s"}` : ""}
+                {a.postingWindow ? ` · ${a.postingWindow}` : ""}
+              </p>
+            )}
 
             {/* The demand signal. This is the reason the list exists. */}
             {a.lookingFor && (
