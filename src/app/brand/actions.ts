@@ -5,7 +5,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth/creator";
-import { BRAND_COOKIE, issueBrandSession, requireActiveBrand } from "@/lib/auth/brand";
+import {
+  BRAND_COOKIE,
+  issueBrandSession,
+  requireActiveBrand,
+  requireBrandAccount,
+} from "@/lib/auth/brand";
 
 /**
  * Brands joining the interest list, signing in, and asking for a creator.
@@ -38,10 +43,10 @@ async function setSession(id: string) {
 }
 
 export async function brandApply(form: FormData): Promise<void> {
-  // Which door they came in by. Decides the brief fields and where errors go
-  // back to; everything else about the account is the same.
-  const kind = form.get("kind") === "ARTIST" ? "ARTIST" : "BRAND";
-  const back = kind === "ARTIST" ? "/artists" : "/brand/apply";
+  // Which door they came in by. A manager's sign-up carries the first song
+  // as a brief; everything else about the account is the same.
+  const kind = form.get("kind") === "MUSIC" ? "MUSIC" : "BRAND";
+  const back = kind === "MUSIC" ? "/music" : "/brand/apply";
   const companyName = text(form, "companyName");
   const contactName = text(form, "contactName");
   const email = text(form, "email").toLowerCase();
@@ -51,13 +56,7 @@ export async function brandApply(form: FormData): Promise<void> {
   const timing = text(form, "timing").slice(0, 100);
   const password = form.get("password");
 
-  // The song brief. Free text, like the demand fields: it is what a manager
-  // actually sends — a link, a feeling, a window, a count.
-  const trackUrl = text(form, "trackUrl").slice(0, 500);
-  const mood = text(form, "mood").slice(0, 200);
-  const postingWindow = text(form, "postingWindow").slice(0, 100);
-  const videosRaw = Number(text(form, "videosWanted").replace(/[^0-9]/g, ""));
-  const videosWanted = Number.isFinite(videosRaw) && videosRaw > 0 ? Math.min(videosRaw, 10_000) : null;
+  const brief = kind === "MUSIC" ? briefFromForm(form) : null;
 
   if (!companyName || !contactName) redirect(`${back}?error=missing`);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
@@ -66,7 +65,7 @@ export async function brandApply(form: FormData): Promise<void> {
   if (typeof password !== "string" || password.length < MIN_PASSWORD) {
     redirect(`${back}?error=short`);
   }
-  if (kind === "ARTIST" && !trackUrl) redirect(`${back}?error=track`);
+  if (kind === "MUSIC" && !brief) redirect(`${back}?error=track`);
 
   const existing = await prisma.brandAccount.findUnique({ where: { email } });
   if (existing) redirect(`${back}?error=exists`);
@@ -82,15 +81,52 @@ export async function brandApply(form: FormData): Promise<void> {
       budgetRange: budgetRange || null,
       timing: timing || null,
       kind,
-      trackUrl: trackUrl || null,
-      mood: mood || null,
-      postingWindow: postingWindow || null,
-      videosWanted,
+      briefs: brief ? { create: brief } : undefined,
       // PENDING by default — on the list, not a member.
     },
   });
 
   await setSession(account.id);
+  revalidatePath("/brands");
+  redirect("/brand");
+}
+
+/**
+ * One song, as a manager briefs it. Free text, like the demand fields on the
+ * account: a link, a feeling, a window, a count. Null when the two things a
+ * brief cannot do without — who the artist is and where the song is — are
+ * missing.
+ */
+function briefFromForm(form: FormData) {
+  const artistName = text(form, "artistName").slice(0, 200);
+  const trackUrl = text(form, "trackUrl").slice(0, 500);
+  if (!artistName || !trackUrl) return null;
+  const videosRaw = Number(text(form, "videosWanted").replace(/[^0-9]/g, ""));
+  return {
+    artistName,
+    trackUrl,
+    mood: text(form, "mood").slice(0, 200) || null,
+    lookingFor: text(form, "lookingFor").slice(0, 500) || null,
+    postingWindow: text(form, "postingWindow").slice(0, 100) || null,
+    videosWanted:
+      Number.isFinite(videosRaw) && videosRaw > 0 ? Math.min(videosRaw, 10_000) : null,
+    budgetRange: text(form, "budgetRange").slice(0, 100) || null,
+    releaseDate: text(form, "releaseDate").slice(0, 100) || null,
+  };
+}
+
+/** A manager lines up the next song. Any membership state: a company on the
+ *  list can queue a release while they wait. */
+export async function addSoundBrief(form: FormData): Promise<void> {
+  const account = await requireBrandAccount();
+  if (account.kind !== "MUSIC") redirect("/brand");
+  const brief = briefFromForm(form);
+  if (!brief) redirect("/brand?error=track");
+
+  await prisma.soundBrief.create({ data: { ...brief, brandAccountId: account.id } });
+
+  revalidatePath("/brand");
+  revalidatePath("/brand/roster");
   revalidatePath("/brands");
   redirect("/brand");
 }
@@ -138,7 +174,19 @@ export async function brandExpressInterest(form: FormData): Promise<void> {
   const account = await requireActiveBrand();
   const creatorId = text(form, "creatorId");
   const note = text(form, "note").slice(0, 1000);
+  const briefId = text(form, "briefId");
   if (!creatorId) redirect("/brand/roster");
+
+  // The song has to be this account's. A brief id from the form is only ever
+  // looked up together with the session's account, so someone else's song
+  // simply is not found.
+  const brief = briefId
+    ? await prisma.soundBrief.findFirst({
+        where: { id: briefId, brandAccountId: account.id },
+        select: { id: true },
+      })
+    : null;
+  if (account.kind === "MUSIC" && !brief) redirect("/brand/roster");
 
   const creator = await prisma.creator.findUnique({
     where: { id: creatorId },
@@ -154,8 +202,13 @@ export async function brandExpressInterest(form: FormData): Promise<void> {
       },
     },
     // Re-expressing interest must not reopen something the creator declined.
-    update: { note: note || null },
-    create: { brandAccountId: account.id, creatorId: creator.id, note: note || null },
+    update: { note: note || null, briefId: brief?.id ?? null },
+    create: {
+      brandAccountId: account.id,
+      creatorId: creator.id,
+      note: note || null,
+      briefId: brief?.id ?? null,
+    },
   });
 
   revalidatePath("/brand/roster");

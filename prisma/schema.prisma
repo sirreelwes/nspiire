@@ -342,17 +342,13 @@ model BrandAccount {
   budgetRange String?
   timing      String?
 
-  /// A brand wants a creator to talk about a product; an artist or label
-  /// wants creators to use a song. Same account, same consent rules, same
-  /// roster — different door, different brief, different deal shape.
-  kind AccountKind @default(BRAND)
-  /// The song brief, for ARTIST accounts. Free text on purpose, like the
-  /// demand fields above: the brief managers actually send is a sound link,
-  /// a one-line mood, a posting window and a count.
-  trackUrl      String?
-  mood          String?
-  postingWindow String?
-  videosWanted  Int?
+  /// A brand wants a creator to talk about a product. A management company
+  /// or label wants creators to use a song — and artists never book this
+  /// themselves, their managers do, for several artists and several songs
+  /// over time. So the account is the company, and each song is a
+  /// SoundBrief. Same consent rules, same roster; different door.
+  kind   AccountKind  @default(BRAND)
+  briefs SoundBrief[]
 
   /// Dormant. Everyone joins an interest list today and nobody is charged;
   /// switching membership on later is a copy change plus Stripe, not a rebuild.
@@ -374,7 +370,33 @@ model BrandAccount {
 
 enum AccountKind {
   BRAND
-  ARTIST
+  /// Artist management or a label. The buyer of sound placements.
+  MUSIC
+}
+
+/// One song a manager wants creators to use. Free text on purpose, like the
+/// demand fields on the account: the brief managers actually send is a link,
+/// a one-line feeling, a posting window and a count. An interest in a creator
+/// can point at one of these, so the creator knows which song is being asked
+/// about.
+model SoundBrief {
+  id             String       @id @default(cuid())
+  brandAccountId String
+  brandAccount   BrandAccount @relation(fields: [brandAccountId], references: [id])
+
+  artistName    String
+  trackUrl      String
+  mood          String?
+  lookingFor    String?
+  postingWindow String?
+  videosWanted  Int?
+  budgetRange   String?
+  releaseDate   String?
+
+  interests BrandInterest[]
+  createdAt DateTime @default(now())
+
+  @@index([brandAccountId])
 }
 
 enum MembershipStatus {
@@ -396,6 +418,9 @@ model BrandInterest {
 
   /// What the brand is thinking — the creator sees this when deciding.
   note String?
+  /// Which song, when the account is a manager or label.
+  briefId String?
+  brief   SoundBrief? @relation(fields: [briefId], references: [id])
 
   status     InterestStatus @default(SENT)
   decidedAt  DateTime?

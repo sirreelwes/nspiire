@@ -37,10 +37,10 @@ export default function Home() {
           For brands
         </Link>
         <Link
-          href="/artists"
+          href="/music"
           className={arch("secondary", "lg")}
         >
-          For artists
+          For managers
         </Link>
       </div>
 

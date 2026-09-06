@@ -39,7 +39,10 @@ export default async function BrandsPage() {
   }
 
   const accounts = await prisma.brandAccount.findMany({
-    include: { _count: { select: { interests: true } } },
+    include: {
+      _count: { select: { interests: true } },
+      briefs: { orderBy: { createdAt: "desc" } },
+    },
     orderBy: [{ membership: "asc" }, { appliedAt: "desc" }],
   });
   const pending = accounts.filter((a) => a.membership === "PENDING");
@@ -78,25 +81,26 @@ export default async function BrandsPage() {
               </span>
             </div>
             <p className="mt-1 text-base text-neutral-500">
-              {a.kind === "ARTIST" ? "Artist · " : ""}
+              {a.kind === "MUSIC" ? "Management / label · " : ""}
               {a.contactName} · {a.email}
               {a.website ? ` · ${a.website}` : ""}
             </p>
-            {a.kind === "ARTIST" && (
-              <p className="mt-3 text-base leading-snug text-neutral-700 dark:text-neutral-300">
-                <span className="font-medium">The song: </span>
-                {a.trackUrl ? (
-                  <a href={a.trackUrl} className="underline underline-offset-4" rel="noreferrer">
-                    {a.trackUrl}
-                  </a>
-                ) : (
-                  "no link"
-                )}
-                {a.mood ? ` · “${a.mood}”` : ""}
-                {a.videosWanted != null ? ` · ${a.videosWanted} video${a.videosWanted === 1 ? "" : "s"}` : ""}
-                {a.postingWindow ? ` · ${a.postingWindow}` : ""}
+            {a.briefs.map((b) => (
+              <p
+                key={b.id}
+                className="mt-3 text-base leading-snug text-neutral-700 dark:text-neutral-300"
+              >
+                <span className="font-medium">{b.artistName}: </span>
+                <a href={b.trackUrl} className="underline underline-offset-4" rel="noreferrer">
+                  {b.trackUrl}
+                </a>
+                {b.mood ? ` · “${b.mood}”` : ""}
+                {b.lookingFor ? ` · for ${b.lookingFor}` : ""}
+                {b.videosWanted != null ? ` · ${b.videosWanted} video${b.videosWanted === 1 ? "" : "s"}` : ""}
+                {b.postingWindow ? ` · ${b.postingWindow}` : ""}
+                {b.budgetRange ? ` · ${b.budgetRange}` : ""}
               </p>
-            )}
+            ))}
 
             {/* The demand signal. This is the reason the list exists. */}
             {a.lookingFor && (
