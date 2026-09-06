@@ -50,3 +50,26 @@ export async function declineMembership(form: FormData) {
 export async function cancelMembership(form: FormData) {
   await decide(form, "CANCELLED");
 }
+
+/**
+ * Write the one-line summaries older shortlists are missing.
+ *
+ * Runs on the server, where the Claude key lives; a local run of
+ * scripts/backfill-brand-summaries.cjs needs a key Vercel will not hand back.
+ * Idempotent, so the button can be pressed twice without harm, and it only
+ * shows while there is something to write.
+ */
+export async function writeMissingBrandSummaries(): Promise<void> {
+  await requireOperator();
+  const { backfillBrandSummaries } = await import("@/lib/brands/summaries");
+  let message: string;
+  try {
+    const r = await backfillBrandSummaries(prisma);
+    message = `Wrote ${r.summarised} summar${r.summarised === 1 ? "y" : "ies"}, tidied ${r.summarised === 0 && r.renamed === 0 ? "nothing" : `${r.renamed} name${r.renamed === 1 ? "" : "s"}`}.${r.missed.length ? ` No line came back for ${r.missed.join(", ")}.` : ""}`;
+  } catch (err) {
+    message = err instanceof Error ? err.message : "Could not write summaries.";
+  }
+  revalidatePath("/creators");
+  revalidatePath("/creator");
+  redirect(`/creators?notice=${encodeURIComponent(message)}`);
+}
